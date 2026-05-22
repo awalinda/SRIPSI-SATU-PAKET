@@ -1,0 +1,524 @@
+import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../services/package_service.dart';
+import '../../widgets/custom_notification.dart';
+
+class DetailPaketPage extends StatefulWidget {
+  final Map<String, dynamic> paket;
+
+  const DetailPaketPage({super.key, required this.paket});
+
+  @override
+  State<DetailPaketPage> createState() => _DetailPaketPageState();
+}
+
+class _DetailPaketPageState extends State<DetailPaketPage> {
+  String selectedNote = "";
+  bool _isSubmitting = false;
+
+  // Opsi catatan + biaya tambahan
+  final List<Map<String, dynamic>> _noteOptions = [
+    {"label": "Minta foto lebih detail (kanan, kiri, depan, belakang)", "biaya": 2000},
+    {"label": "Unboxing paket", "biaya": 3000},
+  ];
+
+  int get _selectedBiaya {
+    final opt = _noteOptions.firstWhere(
+      (o) => o["label"] == selectedNote,
+      orElse: () => {"biaya": 0},
+    );
+    return opt["biaya"] as int;
+  }
+
+  String _formatDate(dynamic timestamp) {
+    if (timestamp == null) return "-";
+    DateTime dt;
+    if (timestamp is Timestamp) {
+      dt = timestamp.toDate();
+    } else if (timestamp is String) {
+      dt = DateTime.tryParse(timestamp) ?? DateTime.now();
+    } else {
+      dt = DateTime.now();
+    }
+    List<String> months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    return "${dt.day} ${months[dt.month - 1]} ${dt.year}";
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final String docId = widget.paket["id"] ?? "";
+
+    if (uid == null || docId.isEmpty) {
+      return _buildContent(widget.paket);
+    }
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance.collection('user').doc(uid).collection('packages').doc(docId).snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return _buildContent(widget.paket);
+        }
+        var data = snapshot.data!.data() as Map<String, dynamic>;
+        data["id"] = docId;
+        return _buildContent(data);
+      },
+    );
+  }
+
+  Widget _buildContent(Map<String, dynamic> paketData) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FB),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black, size: 16),
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          "Detail Paket", 
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 18)
+        ),
+      ),
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 🔹 TOP IMAGE & MAIN INFO
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    )
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.grey.shade50, Colors.grey.shade100],
+                            ),
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: const Icon(Icons.inventory_2_outlined, size: 30, color: Color(0xFF427AB5)),
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF427AB5).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  paketData["resi"] ?? "NO RESI",
+                                  style: const TextStyle(
+                                    color: Color(0xFF427AB5),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                               const SizedBox(height: 4),
+                              Text(
+                                paketData["keterangan"] ?? paketData["nama"] ?? "Nama Paket",
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF1A1A1A),
+                                ),
+                              ),
+                               const SizedBox(height: 5),
+                              Text(
+                                "Tiba pada: ${_formatDate(paketData["createdAt"])}",
+                                style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  // Berat Chip
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade50,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: Colors.grey.shade200),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.monitor_weight_outlined, size: 12, color: Colors.grey.shade600),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          (paketData["berat"] ?? 0) < 1000 
+                                              ? "${paketData["berat"]} g" 
+                                              : "${((paketData["berat"] ?? 0) / 1000).toStringAsFixed(1)} kg",
+                                          style: TextStyle(
+                                            color: Colors.grey.shade800,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  // Status Chip
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.shade50,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: Colors.green.shade100),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.check_circle_outline_rounded, size: 12, color: Colors.green),
+                                        const SizedBox(width: 4),
+                                        const Text(
+                                          "Di Gudang",
+                                          style: TextStyle(
+                                            color: Colors.green,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // 🔹 PHOTO PREVIEW (Initial Photos)
+              const Text(
+                "Foto Paket (Awal)",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 6),
+              _buildImageGrid(paketData["images"] ?? []),
+
+              // 🔹 PHOTO PREVIEW (Requested Photos)
+              if (paketData["requestedImages"] != null && (paketData["requestedImages"] as List).isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  "Foto Hasil Permintaan",
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF427AB5)),
+                ),
+                const SizedBox(height: 6),
+                _buildImageGrid(paketData["requestedImages"]),
+              ],
+
+              const SizedBox(height: 12),
+
+              // 🔹 NOTE SELECTION
+              const Text(
+                "Permintaan Foto Tambahan",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                "Biaya tambahan ditagih saat checkout.",
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 10),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: Colors.grey.shade100),
+                ),
+                child: Column(
+                  children: [
+                    _buildRadioItem(_noteOptions[0]),
+                    const Divider(height: 1, indent: 20, endIndent: 20),
+                    _buildRadioItem(_noteOptions[1]),
+                  ],
+                ),
+              ),
+
+              // TOMBOL SUBMIT
+              if (selectedNote.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF427AB5).withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF427AB5).withOpacity(0.15)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline_rounded, color: Color(0xFF427AB5), size: 16),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          "Biaya tambahan foto: Rp${_selectedBiaya.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')} akan ditambahkan saat checkout.",
+                          style: TextStyle(color: Colors.grey.shade700, fontSize: 11, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 8),
+
+              // 🔥 SUBMIT BUTTON
+               Align(
+                 alignment: Alignment.centerRight,
+                 child: ElevatedButton(
+                   style: ElevatedButton.styleFrom(
+                     backgroundColor: const Color(0xFF1A1A1A),
+                     foregroundColor: Colors.white,
+                     padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 25),
+                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                     elevation: 0,
+                   ),
+                   onPressed: selectedNote.isEmpty || _isSubmitting || paketData["catatanUser"] != null
+                       ? null
+                       : () async {
+                           setState(() => _isSubmitting = true);
+                           try {
+                             final uid = FirebaseAuth.instance.currentUser?.uid;
+                             if (uid != null) {
+                               await PackageService().sendPackageNote(
+                                 uid,
+                                 paketData["id"] ?? "",
+                                 paketData["resi"] ?? "",
+                                 selectedNote,
+                               );
+                               // Simpan biaya tambahan foto ke paket
+                               await FirebaseFirestore.instance
+                                   .collection('user')
+                                   .doc(uid)
+                                   .collection('packages')
+                                   .doc(paketData["id"])
+                                   .update({"biayaTambahanFoto": _selectedBiaya, "labelFoto": selectedNote});
+                               if (mounted) {
+                                 CustomNotification.showSuccess(context, "Permintaan terkirim!");
+                                 // _showSuccessDialog(context); // Optional: keep or remove if notification is enough
+                               }
+                             }
+                           } catch (e) {
+                             if (mounted) {
+                               CustomNotification.showError(context, "Error: $e");
+                             }
+                           } finally {
+                             if (mounted) setState(() => _isSubmitting = false);
+                           }
+                         },
+                   child: _isSubmitting
+                       ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                       : Text(
+                           paketData["catatanUser"] != null ? "Diproses Admin" : "Kirim Permintaan",
+                           style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                         ),
+                 ),
+               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoTile(IconData icon, String label, String value) {
+    return Column(
+      children: [
+        Icon(icon, size: 18, color: Colors.grey.shade400),
+        const SizedBox(height: 4),
+        Text(label, style: TextStyle(color: Colors.grey.shade500, fontSize: 10)),
+        const SizedBox(height: 4),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+      ],
+    );
+  }
+
+  Widget _buildRadioItem(Map<String, dynamic> option) {
+    final String text = option["label"] as String;
+    final int biaya = option["biaya"] as int;
+    bool isSelected = selectedNote == text;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          selectedNote = text;
+        });
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    text,
+                    style: TextStyle(
+                      color: isSelected ? Colors.black : Colors.grey.shade600,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    "+ Rp${biaya.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}",
+                    style: TextStyle(
+                      color: isSelected ? const Color(0xFF427AB5) : Colors.grey.shade400,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? const Color(0xFF427AB5) : Colors.grey.shade300,
+                  width: isSelected ? 6 : 2,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSuccessDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        Future.delayed(const Duration(seconds: 2), () {
+          if (context.mounted) Navigator.pop(context);
+        });
+
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+          content: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.green, size: 60),
+                const SizedBox(height: 20),
+                const Text(
+                  "Terkirim!",
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  "Catatan Anda telah terkirim ke admin.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildImageGrid(List<dynamic> images) {
+    if (images.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade100),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.image_not_supported_outlined, color: Colors.grey.shade400, size: 24),
+            const SizedBox(width: 10),
+            Text("Belum ada foto", style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      );
+    }
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: images.map((img) {
+          return GestureDetector(
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (_) => Dialog(
+                  child: InteractiveViewer(
+                    child: Image.memory(base64Decode(img), fit: BoxFit.contain),
+                  ),
+                ),
+              );
+            },
+            child: Container(
+              margin: const EdgeInsets.only(right: 15),
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.grey.shade200, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  )
+                ],
+                image: DecorationImage(
+                  image: MemoryImage(base64Decode(img)),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "satupaket-a7b4c",
+          "appId": "1:4331865556:android:d8877cc43676ada1024241",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "satupaket-a7b4c",
+          "configurations": {
+            "android": "1:4331865556:android:d8877cc43676ada1024241",
+            "web": "1:4331865556:web:832d1329c3d4dd52024241"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

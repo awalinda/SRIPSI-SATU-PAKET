@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "4331865556",
+    "project_id": "satupaket-a7b4c",
+    "storage_bucket": "satupaket-a7b4c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:4331865556:android:d8877cc43676ada1024241",
+        "android_client_info": {
+          "package_name": "com.example.satupaket"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBMhkv_3MTk5zmtHB9jiE9PbwLdtNi30n0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

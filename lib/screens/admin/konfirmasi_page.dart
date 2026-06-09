@@ -203,7 +203,7 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
                 const SizedBox(height: 30),
                 const Text("Daftar Paket & Foto (Gudang):", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFF1E293B))),
                 const SizedBox(height: 15),
-                ...List.generate((item["paket"] as List? ?? []).length, (index) {
+                ...List.generate((item["paket"] is List ? (item["paket"] as List).length : 0), (index) {
                   final p = (item["paket"] as List)[index];
                   return _PackageItemWidget(packageData: p);
                 }),
@@ -510,7 +510,11 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
                 String tgl = (data["tanggal"] ?? "").toString().toLowerCase();
                 // Jika tanggal null, coba ambil dari createdAt
                 if (data["createdAt"] != null && tgl == "") {
-                  tgl = (data["createdAt"] as Timestamp).toDate().toString().split(" ")[0];
+                  if (data["createdAt"] is Timestamp) {
+                    tgl = (data["createdAt"] as Timestamp).toDate().toString().split(" ")[0];
+                  } else {
+                    tgl = data["createdAt"].toString().split(" ")[0];
+                  }
                 }
                 
                 return nama.contains(_searchQuery) || uid.contains(_searchQuery) || tgl.contains(_searchQuery);
@@ -629,7 +633,7 @@ class _BentoOrderCard extends StatelessWidget {
                       ],
                     ),
                     Text(
-                      item["tanggal"] ?? (item["createdAt"] != null ? (item["createdAt"] as Timestamp).toDate().toString().split(" ")[0] : "-"),
+                      item["tanggal"] ?? (item["createdAt"] != null ? (item["createdAt"] is Timestamp ? (item["createdAt"] as Timestamp).toDate().toString().split(" ")[0] : item["createdAt"].toString().split(" ")[0]) : "-"),
                       style: TextStyle(color: Colors.grey.shade400, fontSize: 10, fontWeight: FontWeight.w500),
                     ),
                   ],
@@ -697,7 +701,7 @@ class _BentoOrderCard extends StatelessWidget {
 // 🔥 WIDGET ALAMAT USER
 class _UserAddressWidget extends StatelessWidget {
   final String? userId;
-  final String? initialAddress;
+  final dynamic initialAddress;
 
   const _UserAddressWidget({this.userId, this.initialAddress});
 
@@ -705,11 +709,11 @@ class _UserAddressWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     if (initialAddress != null && initialAddress != "-") {
       if (initialAddress is Map) {
-        final a = initialAddress as Map<String, dynamic>;
+        final a = initialAddress as Map;
         final alamatLengkap = "${a['namaLengkap'] ?? ''}, ${a['telepon'] ?? ''}\n${a['detail'] ?? ''}, ${a['desa'] ?? ''}, ${a['kecamatan'] ?? ''}, ${a['kabupaten'] ?? ''}, ${a['provinsi'] ?? ''} ${a['kodePos'] ?? ''}";
         return Text(alamatLengkap, style: const TextStyle(fontSize: 12, color: Colors.black87));
       }
-      if (initialAddress is String && initialAddress!.toString().isNotEmpty) {
+      if (initialAddress is String && initialAddress.toString().isNotEmpty) {
         return Text(initialAddress.toString(), style: const TextStyle(fontSize: 12, color: Colors.black87));
       }
     }

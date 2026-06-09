@@ -623,14 +623,21 @@ class _PackageItemWidget extends StatelessWidget {
 // 🔥 WIDGET ALAMAT USER
 class _UserAddressWidget extends StatelessWidget {
   final String? userId;
-  final String? initialAddress;
+  final dynamic initialAddress;
 
   const _UserAddressWidget({this.userId, this.initialAddress});
 
   @override
   Widget build(BuildContext context) {
-    if (initialAddress != null && initialAddress != "-" && initialAddress!.isNotEmpty) {
-      return Text(initialAddress!, style: const TextStyle(fontSize: 12, color: Colors.black87));
+    if (initialAddress != null && initialAddress != "-") {
+      if (initialAddress is Map) {
+        final a = initialAddress as Map;
+        final alamatLengkap = "${a['namaLengkap'] ?? ''}, ${a['telepon'] ?? ''}\n${a['detail'] ?? ''}, ${a['desa'] ?? ''}, ${a['kecamatan'] ?? ''}, ${a['kabupaten'] ?? ''}, ${a['provinsi'] ?? ''} ${a['kodePos'] ?? ''}";
+        return Text(alamatLengkap, style: const TextStyle(fontSize: 12, color: Colors.black87));
+      }
+      if (initialAddress is String && initialAddress.toString().isNotEmpty) {
+        return Text(initialAddress.toString(), style: const TextStyle(fontSize: 12, color: Colors.black87));
+      }
     }
 
     if (userId == null || userId!.isEmpty) {

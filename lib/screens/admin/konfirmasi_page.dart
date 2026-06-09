@@ -680,12 +680,25 @@ class _BentoOrderCard extends StatelessWidget {
 
   Widget _miniPreview(Map<String, dynamic> item) {
     List paket = item["paket"] as List? ?? [];
+    String? firstImage;
+    if (paket.isNotEmpty && paket.first["images"] != null && (paket.first["images"] as List).isNotEmpty) {
+      firstImage = (paket.first["images"] as List).first.toString();
+    }
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(6),
+          width: 28,
+          height: 28,
           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade200)),
-          child: const Icon(Icons.inventory_2_outlined, size: 14, color: Color(0xFF4F46E5)),
+          child: firstImage != null
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.memory(
+                    base64Decode(firstImage),
+                    fit: BoxFit.cover,
+                  ),
+                )
+              : const Icon(Icons.inventory_2_outlined, size: 14, color: Color(0xFF4F46E5)),
         ),
         const SizedBox(width: 8),
         Text("${paket.length} Pkt", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),

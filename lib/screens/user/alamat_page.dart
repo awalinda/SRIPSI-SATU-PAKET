@@ -148,160 +148,168 @@ class _AlamatPageState extends State<AlamatPage> {
   Widget buildList() {
     final isDesktop = MediaQuery.of(context).size.width > 800;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              "Alamat Saya",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            ElevatedButton.icon(
-              onPressed: () => setState(() => showForm = true),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text("Tambah Alamat"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF427AB5),
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 30),
-        Expanded(
-          child: StreamBuilder<QuerySnapshot>(
-            stream: AddressService().getAddresses(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return const Center(
-                  child: Text("Belum ada alamat tersimpan.", style: TextStyle(color: Colors.grey)),
-                );
-              }
+    return StreamBuilder<QuerySnapshot>(
+      stream: AddressService().getAddresses(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-              return GridView.builder(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: isDesktop ? 3 : 1, // 🔥 Baris Sampingan
-                  mainAxisSpacing: 15,
-                  crossAxisSpacing: 15,
-                  childAspectRatio: isDesktop ? 1.5 : 2.0,
+        final addresses = snapshot.hasData ? snapshot.data!.docs : [];
+        final addressCount = addresses.length;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Alamat Saya",
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
-                itemCount: snapshot.data!.docs.length,
-                itemBuilder: (context, index) {
-                  var doc = snapshot.data!.docs[index];
-                  var data = doc.data() as Map<String, dynamic>;
-                  
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: const Color(0xFF1E3C72).withOpacity(0.05)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF1E3C72).withOpacity(0.04),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        )
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    if (addressCount >= 3) {
+                      CustomNotification.showError(context, "Maksimal 3 alamat. Hapus salah satu untuk menambahkan yang baru.");
+                    } else {
+                      setState(() => showForm = true);
+                    }
+                  },
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text("Tambah Alamat"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: addressCount >= 3 ? Colors.grey : const Color(0xFF427AB5),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 30),
+            Expanded(
+              child: addresses.isEmpty
+                  ? const Center(
+                      child: Text("Belum ada alamat tersimpan.", style: TextStyle(color: Colors.grey)),
+                    )
+                  : GridView.builder(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: isDesktop ? 3 : 1, // 🔥 Baris Sampingan
+                        mainAxisSpacing: 15,
+                        crossAxisSpacing: 15,
+                        childAspectRatio: isDesktop ? 1.5 : 2.0,
+                      ),
+                      itemCount: addresses.length,
+                      itemBuilder: (context, index) {
+                        var doc = addresses[index];
+                        var data = doc.data() as Map<String, dynamic>;
+                        
+                        return Container(
                           decoration: BoxDecoration(
-                            color: const Color(0xFF427AB5).withOpacity(0.05),
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                            border: Border(bottom: BorderSide(color: const Color(0xFF427AB5).withOpacity(0.05))),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                data['label'] ?? "Tanpa Label",
-                                style: const TextStyle(color: Color(0xFF1E3C72), fontWeight: FontWeight.w900, fontSize: 13),
-                              ),
-                              Row(
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.edit_outlined, color: Color(0xFF427AB5), size: 18),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    onPressed: () => _startEdit(doc.id, data),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 18),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    onPressed: () {
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) => AlertDialog(
-                                          title: const Text("Hapus Alamat"),
-                                          content: const Text("Apakah Anda yakin ingin menghapus alamat ini?"),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () => Navigator.pop(context),
-                                              child: const Text("Batal"),
-                                            ),
-                                            TextButton(
-                                              onPressed: () {
-                                                AddressService().deleteAddress(doc.id);
-                                                Navigator.pop(context);
-                                                CustomNotification.showSuccess(context, "Alamat dihapus");
-                                              },
-                                              child: const Text("Hapus", style: TextStyle(color: Colors.red)),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: const Color(0xFF1E3C72).withOpacity(0.05)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF1E3C72).withOpacity(0.04),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              )
                             ],
                           ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(12),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(data['namaLengkap'] ?? "", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                              const SizedBox(height: 4),
-                              Text(
-                                "${data['detail']}, ${data['desa']}, ${data['kecamatan']}",
-                                style: const TextStyle(fontSize: 11, color: Colors.black87),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF427AB5).withOpacity(0.05),
+                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                                  border: Border(bottom: BorderSide(color: const Color(0xFF427AB5).withOpacity(0.05))),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      data['label'] ?? "Tanpa Label",
+                                      style: const TextStyle(color: Color(0xFF1E3C72), fontWeight: FontWeight.w900, fontSize: 13),
+                                    ),
+                                    Row(
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.edit_outlined, color: Color(0xFF427AB5), size: 18),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                          onPressed: () => _startEdit(doc.id, data),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 18),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                          onPressed: () {
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) => AlertDialog(
+                                                title: const Text("Hapus Alamat"),
+                                                content: const Text("Apakah Anda yakin ingin menghapus alamat ini?"),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () => Navigator.pop(context),
+                                                    child: const Text("Batal"),
+                                                  ),
+                                                  TextButton(
+                                                    onPressed: () {
+                                                      AddressService().deleteAddress(doc.id);
+                                                      Navigator.pop(context);
+                                                      CustomNotification.showSuccess(context, "Alamat dihapus");
+                                                    },
+                                                    child: const Text("Hapus", style: TextStyle(color: Colors.red)),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
-                              Text(
-                                "${data['kabupaten']}, ${data['provinsi']} ${data['kodePos']}",
-                                style: const TextStyle(fontSize: 11, color: Colors.black87),
+                              Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(data['namaLengkap'] ?? "", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "${data['detail']}, ${data['desa']}, ${data['kecamatan']}",
+                                      style: const TextStyle(fontSize: 11, color: Colors.black87),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      "${data['kabupaten']}, ${data['provinsi']} ${data['kodePos']}",
+                                      style: const TextStyle(fontSize: 11, color: Colors.black87),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text("Telp: ${data['telepon']}", style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                                  ],
+                                ),
                               ),
-                              const SizedBox(height: 4),
-                              Text("Telp: ${data['telepon']}", style: const TextStyle(color: Colors.grey, fontSize: 11)),
                             ],
                           ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-      ],
+            ),
+          ],
+        );
+      },
     );
   }
 

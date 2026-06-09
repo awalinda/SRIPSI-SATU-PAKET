@@ -270,24 +270,7 @@ class _LandingPageState extends State<LandingPage> {
               ),
             ),
           ),
-          Positioned(
-            left: size.width * 0.1,
-            top: size.height * 0.2,
-            child: Container(
-              width: 12,
-              height: 12,
-              decoration: const BoxDecoration(color: Color(0xFF427AB5), shape: BoxShape.circle),
-            ),
-          ),
-          Positioned(
-            right: size.width * 0.15,
-            bottom: size.height * 0.3,
-            child: Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(color: const Color(0xFF427AB5).withOpacity(0.4), shape: BoxShape.circle),
-            ),
-          ),
+
           
           Padding(
             padding: EdgeInsets.symmetric(horizontal: isDesktop ? 100 : 25),
@@ -299,30 +282,6 @@ class _LandingPageState extends State<LandingPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF427AB5).withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.flash_on_rounded, color: Color(0xFF427AB5), size: 14),
-                            const SizedBox(width: 8),
-                            const Text(
-                              "SOLUSI ONGKIR HEMAT LAMPUNG",
-                              style: TextStyle(
-                                color: Color(0xFF427AB5), 
-                                fontWeight: FontWeight.w900, 
-                                fontSize: 11, 
-                                letterSpacing: 1.5
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 30),
                       Text(
                         "Kirim Paket ke\nSeluruh Kabupaten\nLebih Hemat!",
                         style: GoogleFonts.poppins(
@@ -595,12 +554,6 @@ class _LandingPageState extends State<LandingPage> {
       ),
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(15),
-            decoration: const BoxDecoration(color: Color(0xFFF1F5F9), shape: BoxShape.circle),
-            child: const Icon(Icons.rocket_launch_rounded, color: Color(0xFF1E3C72), size: 40),
-          ),
-          const SizedBox(height: 30),
           Text(
             "Siap untuk Berhemat?",
             style: GoogleFonts.poppins(fontSize: 36, fontWeight: FontWeight.w900, color: const Color(0xFF1E3C72)),

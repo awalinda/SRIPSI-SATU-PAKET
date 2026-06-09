@@ -57,163 +57,204 @@ class _DashboardUserState extends State<DashboardUser> {
     const PrivasiPage(),
   ];
 
+  DateTime? _lastBackPress;
+
   @override
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width > 800;
 
-    return Scaffold(
-      appBar: isDesktop
-          ? null
-          : AppBar(
-              title: const Text("SATUPAKET", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              backgroundColor: const Color(0xFF427AB5),
-              iconTheme: const IconThemeData(color: Colors.white),
-              elevation: 0,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+
+        // Jika tidak di beranda, kembali ke beranda
+        if (selectedIndex != 0) {
+          setState(() => selectedIndex = 0);
+          return;
+        }
+
+        // Jika sudah di beranda, konfirmasi keluar dengan double back
+        final now = DateTime.now();
+        if (_lastBackPress == null || now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
+          _lastBackPress = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.exit_to_app_rounded, color: Colors.white, size: 18),
+                  SizedBox(width: 10),
+                  Text("Tekan sekali lagi untuk keluar"),
+                ],
+              ),
+              duration: const Duration(seconds: 2),
+              backgroundColor: const Color(0xFF1E3C72),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              margin: const EdgeInsets.all(16),
             ),
-      drawer: isDesktop ? null : _buildDrawer(),
-      bottomNavigationBar: isDesktop ? null : _buildBottomNav(),
-      body: SafeArea(
-        bottom: false, // Diganti ke false karena ada BottomNav
-        child: Container(
-          width: double.infinity,
-          height: double.infinity,
-          decoration: const BoxDecoration(
-            color: Color(0xFFF0F4F8), // Softer off-white with blue tint to reduce glare
-          ),
-        child: Padding(
-          padding: EdgeInsets.only(
-            left: isDesktop ? 20 : 10,
-            right: isDesktop ? 20 : 10,
-            top: isDesktop ? 20 : 10,
-            bottom: isDesktop ? 20 : 0, // No bottom padding on mobile because of BottomNav
-          ),
-          child: Row(
-            children: [
-              // ================= SIDEBAR (DESKTOP) =================
-              if (isDesktop)
-                Container(
-                  width: 260,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(32),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF1E3C72).withOpacity(0.06),
-                        blurRadius: 40,
-                        offset: const Offset(0, 10),
+          );
+          return;
+        }
+
+        // Keluar dari app
+        if (context.mounted) Navigator.of(context).pop();
+      },
+      child: Scaffold(
+        appBar: isDesktop
+            ? null
+            : AppBar(
+                title: const Text("SATUPAKET", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                backgroundColor: const Color(0xFF427AB5),
+                iconTheme: const IconThemeData(color: Colors.white),
+                elevation: 0,
+              ),
+        drawer: isDesktop ? null : _buildDrawer(),
+        bottomNavigationBar: isDesktop ? null : _buildBottomNav(),
+        body: SafeArea(
+          bottom: false,
+          child: Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              color: Color(0xFFF0F4F8),
+            ),
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: isDesktop ? 20 : 10,
+                right: isDesktop ? 20 : 10,
+                top: isDesktop ? 20 : 10,
+                bottom: isDesktop ? 20 : 0,
+              ),
+              child: Row(
+                children: [
+                  // ================= SIDEBAR (DESKTOP) =================
+                  if (isDesktop)
+                    Container(
+                      width: 260,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(32),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF1E3C72).withOpacity(0.06),
+                            blurRadius: 40,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      // 🔥 LOGO SECTION
-                      const SizedBox(height: 40),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF427AB5).withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Image.asset('lib/assets/images/logo.png', height: 22, fit: BoxFit.contain),
-                            const SizedBox(width: 10),
-                            const Text(
-                              "SATUPAKET",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF1E3C72),
-                                letterSpacing: 1.2,
+                      child: Column(
+                        children: [
+                          // 🔥 LOGO SECTION
+                          const SizedBox(height: 40),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF427AB5).withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Image.asset('lib/assets/images/logo.png', height: 22, fit: BoxFit.contain),
+                                const SizedBox(width: 10),
+                                const Text(
+                                  "SATUPAKET",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFF1E3C72),
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 50),
+
+                          // 🔥 NAVIGATION MENU
+                          Expanded(
+                            child: ListView(
+                              padding: const EdgeInsets.symmetric(horizontal: 15),
+                              children: [
+                                menuItem(Icons.dashboard_outlined, Icons.dashboard_rounded, "Dashboard", 0),
+                                menuItem(Icons.inventory_2_outlined, Icons.inventory_2_rounded, "Paket Saya", 1),
+                                menuItem(Icons.local_shipping_outlined, Icons.local_shipping_rounded, "Konsolidasi", 2),
+                                menuItem(Icons.history_outlined, Icons.history_rounded, "Riwayat", 3),
+                                menuItem(Icons.map_outlined, Icons.map_rounded, "Alamat", 4),
+                                menuItem(Icons.forum_outlined, Icons.forum_rounded, "Pesan", 5),
+                                menuItem(Icons.person_outline, Icons.person_rounded, "Profil", 6),
+                                menuItem(Icons.notifications_none_rounded, Icons.notifications_rounded, "Notifikasi", 7),
+                                menuItem(Icons.privacy_tip_outlined, Icons.privacy_tip_rounded, "Privasi", 8),
+                              ],
+                            ),
+                          ),
+
+                          // 🔥 USER PREVIEW AT BOTTOM
+                          const Divider(color: Color(0xFFF0F4F8), indent: 20, endIndent: 20),
+                          InkWell(
+                            onTap: () {
+                              setState(() {
+                                selectedIndex = 6;
+                              });
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 18,
+                                    backgroundColor: const Color(0xFF427AB5).withOpacity(0.1),
+                                    child: const Icon(Icons.person, color: Color(0xFF427AB5), size: 20),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          AuthService().currentUser?.displayName ?? "Pengguna",
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(color: Color(0xFF1E3C72), fontWeight: FontWeight.bold, fontSize: 13),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 50),
-                      
-                      // 🔥 NAVIGATION MENU
-                      Expanded(
-                        child: ListView(
-                          padding: const EdgeInsets.symmetric(horizontal: 15),
-                          children: [
-                            menuItem(Icons.dashboard_outlined, Icons.dashboard_rounded, "Dashboard", 0),
-                            menuItem(Icons.inventory_2_outlined, Icons.inventory_2_rounded, "Paket Saya", 1),
-                            menuItem(Icons.local_shipping_outlined, Icons.local_shipping_rounded, "Konsolidasi", 2),
-                            menuItem(Icons.history_outlined, Icons.history_rounded, "Riwayat", 3),
-                            menuItem(Icons.map_outlined, Icons.map_rounded, "Alamat", 4),
-                            menuItem(Icons.forum_outlined, Icons.forum_rounded, "Pesan", 5),
-                            menuItem(Icons.person_outline, Icons.person_rounded, "Profil", 6),
-                            menuItem(Icons.notifications_none_rounded, Icons.notifications_rounded, "Notifikasi", 7),
-                            menuItem(Icons.privacy_tip_outlined, Icons.privacy_tip_rounded, "Privasi", 8),
-                          ],
-                        ),
-                      ),
-
-                      // 🔥 USER PREVIEW AT BOTTOM
-                      const Divider(color: Color(0xFFF0F4F8), indent: 20, endIndent: 20),
-                      InkWell(
-                        onTap: () {
-                          setState(() {
-                            selectedIndex = 6;
-                          });
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 18,
-                                backgroundColor: const Color(0xFF427AB5).withOpacity(0.1),
-                                child: const Icon(Icons.person, color: Color(0xFF427AB5), size: 20),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                      Text(
-                                        AuthService().currentUser?.displayName ?? "Pengguna",
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(color: Color(0xFF1E3C72), fontWeight: FontWeight.bold, fontSize: 13),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ],
                           ),
+                        ],
+                      ),
+                    ),
+
+                  if (isDesktop) const SizedBox(width: 20),
+
+                  // == MAIN ==
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: isDesktop ? BorderRadius.circular(30) : const BorderRadius.vertical(top: Radius.circular(30)),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.transparent,
+                            borderRadius: isDesktop ? BorderRadius.circular(30) : const BorderRadius.vertical(top: Radius.circular(30)),
+                          ),
+                          child: pages[selectedIndex],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-
-              if (isDesktop) const SizedBox(width: 20),
-
-              // == MAIN ==
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: isDesktop ? BorderRadius.circular(30) : const BorderRadius.vertical(top: Radius.circular(30)),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.transparent,
-                        borderRadius: isDesktop ? BorderRadius.circular(30) : const BorderRadius.vertical(top: Radius.circular(30)),
-                      ),
-                      child: pages[selectedIndex],
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
-      ),
-    ),
-    );
+      ), // end Scaffold
+    ); // end PopScope
   }
+
 
   Widget _buildBottomNav() {
     // Map selectedIndex ke index BottomNav
@@ -257,7 +298,7 @@ class _DashboardUserState extends State<DashboardUser> {
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), activeIcon: Icon(Icons.dashboard_rounded), label: "Beranda"),
             BottomNavigationBarItem(icon: Icon(Icons.inventory_2_outlined), activeIcon: Icon(Icons.inventory_2_rounded), label: "Paket"),
-            BottomNavigationBarItem(icon: Icon(Icons.local_shipping_outlined), activeIcon: Icon(Icons.local_shipping_rounded), label: "Kirim"),
+            BottomNavigationBarItem(icon: Icon(Icons.local_shipping_outlined), activeIcon: Icon(Icons.local_shipping_rounded), label: "Konsolidasi"),
             BottomNavigationBarItem(icon: Icon(Icons.forum_outlined), activeIcon: Icon(Icons.forum_rounded), label: "Pesan"),
             BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person_rounded), label: "Profil"),
           ],
@@ -462,7 +503,7 @@ class DashboardContent extends StatelessWidget {
       color: Colors.transparent, // Inherit from parent F0F4F8
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: isDesktop ? 4 : 10),
         child: Column(
           children: [
             // 🚀 WELCOME CARD (Modern Compact)
@@ -574,9 +615,9 @@ class DashboardContent extends StatelessWidget {
                 crossAxisCount: 3,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                childAspectRatio: isDesktop ? 2.5 : 0.85,
+                mainAxisSpacing: isDesktop ? 6 : 8,
+                crossAxisSpacing: isDesktop ? 6 : 8,
+                childAspectRatio: isDesktop ? 4.5 : 1.25,
                 children: [
                   StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
@@ -634,6 +675,7 @@ class DashboardContent extends StatelessWidget {
               Column(
                 children: [
                   infoCard(Icons.lightbulb_outline_rounded, "Tips Cepat", "Gunakan fitur konsolidasi untuk menghemat biaya pengiriman."),
+                  const SizedBox(height: 12),
                   infoCard(Icons.security_rounded, "Keamanan", "Pastikan paket Anda dipacking dengan aman."),
                 ],
               ),

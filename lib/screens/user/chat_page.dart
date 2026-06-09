@@ -27,7 +27,11 @@ class ChatPage extends StatelessWidget {
                   },
                 ),
 
-                const CircleAvatar(radius: 18),
+                const CircleAvatar(
+                  radius: 18,
+                  backgroundColor: Color(0xFFE2E8F0),
+                  child: Icon(Icons.person, color: Color(0xFF94A3B8)),
+                ),
 
                 const SizedBox(width: 10),
 

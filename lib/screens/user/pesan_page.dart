@@ -72,14 +72,14 @@ class _PesanPageState extends State<PesanPage> {
                 const CircleAvatar(
                   radius: 22,
                   backgroundColor: Color(0xFF427AB5),
-                  backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=admin_satupaket'),
+                  child: Icon(Icons.support_agent_rounded, color: Colors.white, size: 24),
                 ),
                 const SizedBox(width: 12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      "Admin SatuPaket",
+                      "Admin SATUPAKET",
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     Text(

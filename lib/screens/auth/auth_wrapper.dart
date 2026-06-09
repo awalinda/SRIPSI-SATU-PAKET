@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../services/auth_service.dart';
 import '../landing_page.dart';
 import '../admin/dashboard_admin.dart';
 import '../user/dashboard_user.dart';
+import 'login_page.dart';
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
@@ -46,8 +48,14 @@ class AuthWrapper extends StatelessWidget {
           );
         }
 
-        // Jika belum login, langsung ke Landing Page
-        return const LandingPage();
+        // Jika belum login:
+        // Tampilkan Landing Page hanya jika dibuka dari Web.
+        // Jika aplikasi Native (Android/iOS), langsung tampilkan halaman Login.
+        if (kIsWeb) {
+          return const LandingPage();
+        } else {
+          return LoginPage();
+        }
       },
     );
   }

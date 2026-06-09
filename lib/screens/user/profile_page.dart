@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/auth_service.dart';
@@ -98,7 +99,30 @@ class _ProfilePageState extends State<ProfilePage> {
                 _buildSection(
                   title: "Informasi Akun",
                   items: [
-                    _profileItem(Icons.qr_code_scanner_rounded, "ID Pengguna", userIdCode),
+                    _profileItem(
+                      Icons.badge_outlined, 
+                      "ID Pengguna", 
+                      userIdCode,
+                      isAction: true,
+                      actionIcon: Icons.copy_rounded,
+                      onTap: () {
+                        Clipboard.setData(ClipboardData(text: userIdCode));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: const [
+                                Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                                SizedBox(width: 10),
+                                Text("ID Pengguna berhasil disalin!"),
+                              ],
+                            ),
+                            backgroundColor: const Color(0xFF427AB5),
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        );
+                      },
+                    ),
                     _profileItem(
                       Icons.person_outline, 
                       "Nama Lengkap", 
@@ -140,8 +164,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   title: "Lainnya",
                   items: [
                     _profileItem(Icons.description_outlined, "Syarat & Ketentuan", "", isAction: true, onTap: () => _showTermsModal(context)),
-                    _profileItem(Icons.help_outline, "Bantuan", "", isAction: true),
-                    _profileItem(Icons.info_outline, "Tentang Satupaket", "", isAction: true),
                     _profileItem(Icons.logout, "Keluar", "", isAction: true, color: Colors.redAccent, onTap: () => _showLogoutDialog()),
                   ],
                 ),
@@ -481,6 +503,7 @@ class _ProfilePageState extends State<ProfilePage> {
     bool isAction = false, 
     Color color = const Color(0xFF2D3436),
     VoidCallback? onTap,
+    IconData? actionIcon,
   }) {
     return InkWell(
       onTap: onTap,
@@ -508,7 +531,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
             if (isAction)
-              Icon(Icons.arrow_forward_ios, color: color.withOpacity(0.5), size: 16),
+              Icon(actionIcon ?? Icons.arrow_forward_ios, color: color.withOpacity(0.5), size: 16),
           ],
         ),
       ),

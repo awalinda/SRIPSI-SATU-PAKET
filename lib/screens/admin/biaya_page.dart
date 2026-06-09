@@ -515,7 +515,8 @@ class _BiayaPageState extends State<BiayaPage> {
             },
             children: [
               _tableRow("Layanan Utama", "Harga", isHeader: true),
-              _tableRow("Paket (Per Kg)", "Rp ${data["hargaPerKg"]}"),
+              _tableRow("Paket per KG (Antar)", "Rp ${data["hargaPerKg"]}"),
+              _tableRow("Paket per Item (Ambil)", "Rp ${data["hargaPerPaket"] ?? data["hargaPerKg"] ?? 0}"),
               _tableRow("Kirim Reguler", "Rp ${data["shippingReguler"]}"),
               _tableRow("Kirim Express", "Rp ${data["shippingExpress"]}"),
 

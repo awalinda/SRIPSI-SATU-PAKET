@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/order_service.dart';
 import '../../services/auth_service.dart';
@@ -62,9 +63,7 @@ class RiwayatPage extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) => InvoicePage(
-                      paket: o["paket"],
-                      tipe: o["tipe"],
-                      total: (o["total"] ?? 0).toInt(),
+                      orderData: o,
                     ),
                   ),
                 );
@@ -80,14 +79,66 @@ class RiwayatPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // 📦 ICON
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEAF4FF),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: const Icon(Icons.inventory, size: 35),
+                    Builder(
+                      builder: (context) {
+                        String? firstImage;
+                        String? resiPaket;
+                        if (o["paket"] != null && (o["paket"] as List).isNotEmpty) {
+                          var firstPaket = (o["paket"] as List).first;
+                          if (firstPaket is Map) {
+                            resiPaket = firstPaket["resi"];
+                            if (firstPaket["images"] != null && (firstPaket["images"] as List).isNotEmpty) {
+                              firstImage = (firstPaket["images"] as List).first.toString();
+                            }
+                          }
+                        }
+
+                        Widget defaultIcon = const Icon(Icons.inventory, size: 35, color: Color(0xFF427AB5));
+
+                        Widget buildContainer(Widget child) {
+                          return Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEAF4FF),
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: child,
+                          );
+                        }
+
+                        if (firstImage != null) {
+                          return buildContainer(
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(15),
+                              child: Image.memory(base64Decode(firstImage), fit: BoxFit.cover),
+                            ),
+                          );
+                        } else if (resiPaket != null && resiPaket.isNotEmpty) {
+                          return FutureBuilder<QuerySnapshot>(
+                            future: FirebaseFirestore.instance.collection('packages_admin').where('resi', isEqualTo: resiPaket.trim()).limit(1).get(),
+                            builder: (context, snapshot) {
+                              String? fetchedImage;
+                              if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+                                var data = snapshot.data!.docs.first.data() as Map<String, dynamic>;
+                                if (data["images"] != null && (data["images"] as List).isNotEmpty) {
+                                  fetchedImage = (data["images"] as List).first.toString();
+                                }
+                              }
+                              return buildContainer(
+                                fetchedImage != null
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(15),
+                                        child: Image.memory(base64Decode(fetchedImage), fit: BoxFit.cover),
+                                      )
+                                    : defaultIcon,
+                              );
+                            },
+                          );
+                        }
+
+                        return buildContainer(defaultIcon);
+                      }
                     ),
                     const SizedBox(width: 20),
                     // 📄 INFO

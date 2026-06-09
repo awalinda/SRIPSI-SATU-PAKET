@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/order_service.dart';
 import '../../services/auth_service.dart';
@@ -101,13 +102,67 @@ class _KonsolidasiStatusPageState extends State<KonsolidasiStatusPage> {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF427AB5).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: const Icon(Icons.inventory_2_outlined, color: Color(0xFF427AB5), size: 24),
+                      Builder(
+                        builder: (context) {
+                          String? firstImage;
+                          String? resiPaket;
+                          if (o["paket"] != null && (o["paket"] as List).isNotEmpty) {
+                            var firstPaket = (o["paket"] as List).first;
+                            if (firstPaket is Map) {
+                              resiPaket = firstPaket["resi"];
+                              if (firstPaket["images"] != null && (firstPaket["images"] as List).isNotEmpty) {
+                                firstImage = (firstPaket["images"] as List).first.toString();
+                              }
+                            }
+                          }
+
+                          Widget defaultIcon = const Icon(Icons.inventory_2_outlined, color: Color(0xFF427AB5), size: 24);
+
+                          Widget buildContainer(Widget child) {
+                            return Container(
+                              padding: const EdgeInsets.all(8),
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF427AB5).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              child: child,
+                            );
+                          }
+
+                          if (firstImage != null) {
+                            return buildContainer(
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.memory(base64Decode(firstImage), fit: BoxFit.cover),
+                              ),
+                            );
+                          } else if (resiPaket != null && resiPaket.isNotEmpty) {
+                            return FutureBuilder<QuerySnapshot>(
+                              future: FirebaseFirestore.instance.collection('packages_admin').where('resi', isEqualTo: resiPaket.trim()).limit(1).get(),
+                              builder: (context, snapshot) {
+                                String? fetchedImage;
+                                if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+                                  var data = snapshot.data!.docs.first.data() as Map<String, dynamic>;
+                                  if (data["images"] != null && (data["images"] as List).isNotEmpty) {
+                                    fetchedImage = (data["images"] as List).first.toString();
+                                  }
+                                }
+                                return buildContainer(
+                                  fetchedImage != null
+                                      ? ClipRRect(
+                                          borderRadius: BorderRadius.circular(10),
+                                          child: Image.memory(base64Decode(fetchedImage), fit: BoxFit.cover),
+                                        )
+                                      : defaultIcon,
+                                );
+                              },
+                            );
+                          }
+
+                          return buildContainer(defaultIcon);
+                        }
                       ),
                       const SizedBox(width: 15),
                       Expanded(
@@ -211,9 +266,7 @@ class _KonsolidasiStatusPageState extends State<KonsolidasiStatusPage> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => InvoicePage(
-                                    paket: List<Map<String, dynamic>>.from(o["paket"] ?? []),
-                                    tipe: o["tipe"] ?? "-",
-                                    total: o["total"] ?? 0,
+                                    orderData: o,
                                   ),
                                 ),
                               );

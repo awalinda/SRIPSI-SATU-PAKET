@@ -117,16 +117,32 @@ class _DetailPaketPageState extends State<DetailPaketPage> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Colors.grey.shade50, Colors.grey.shade100],
-                            ),
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: const Icon(Icons.inventory_2_outlined, size: 30, color: Color(0xFF427AB5)),
+                        Builder(
+                          builder: (context) {
+                            String? firstImage;
+                            if (paketData["images"] != null && (paketData["images"] as List).isNotEmpty) {
+                              firstImage = (paketData["images"] as List).first.toString();
+                            }
+                            return Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Colors.grey.shade50, Colors.grey.shade100],
+                                ),
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              child: firstImage != null
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(15),
+                                      child: Image.memory(
+                                        base64Decode(firstImage),
+                                        fit: BoxFit.cover,
+                                      ),
+                                    )
+                                  : const Icon(Icons.inventory_2_outlined, size: 30, color: Color(0xFF427AB5)),
+                            );
+                          }
                         ),
                         const SizedBox(width: 20),
                         Expanded(

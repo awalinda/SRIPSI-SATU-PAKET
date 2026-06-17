@@ -18,7 +18,7 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
   String selectedDateFilter = "Semua Waktu";
-  String selectedStatusFilter = "Semua Status";
+  String selectedStatusFilter = "Diantar";
   bool showOnlyReviewed = false;
   final FocusNode _searchFocusNode = FocusNode();
 
@@ -335,7 +335,7 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
                         });
                       }
                     },
-                    items: <String>['Semua Status', 'Diantar', 'Selesai']
+                    items: <String>['Diantar', 'Selesai', 'Semua Status']
                         .map<DropdownMenuItem<String>>((String value) {
                       return DropdownMenuItem<String>(
                         value: value,

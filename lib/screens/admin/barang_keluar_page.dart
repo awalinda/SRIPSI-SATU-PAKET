@@ -16,9 +16,18 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
   final ReportService _reportService = ReportService();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
+  String selectedDateFilter = "Semua Waktu";
+  String selectedStatusFilter = "Semua Status";
   final FocusNode _searchFocusNode = FocusNode();
 
   bool get isMobile => MediaQuery.of(context).size.width < 800;
+
+  @override
+  void initState() {
+    super.initState();
+    // 🔥 Auto update status jika lewat 3 hari
+    OrderService.checkAndAutoUpdateSelesai();
+  }
 
   @override
   void dispose() {
@@ -123,6 +132,33 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
     );
   }
 
+  Widget _buildStatusBadge(String status) {
+    bool isSelesai = status == "Selesai";
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: isSelesai ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(isSelesai ? Icons.check_circle_outline : Icons.local_shipping_outlined, 
+               size: 10, color: isSelesai ? Colors.green : Colors.orange),
+          const SizedBox(width: 4),
+          Text(
+            isSelesai ? "Selesai" : "Diantar",
+            style: TextStyle(
+              fontSize: 8,
+              fontWeight: FontWeight.w900,
+              color: isSelesai ? Colors.green : Colors.orange,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -188,35 +224,107 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
           
           const SizedBox(height: 15),
 
-          // 🔥 SEARCH BAR (Neat & Minimalist)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              width: isMobile ? double.infinity : 300,
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
-                style: const TextStyle(fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: "Cari Resi atau Nama...",
-                  hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
-                  prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF427AB5), size: 18),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+          // 🔥 SEARCH BAR & FILTER TANGGAL (Neat & Minimalist)
+          Wrap(
+            spacing: 15,
+            runSpacing: 15,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Container(
+                width: isMobile ? double.infinity : 300,
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+                  style: const TextStyle(fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: "Cari Resi atau Nama...",
+                    hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
+                    prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF427AB5), size: 18),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 ),
               ),
-            ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
+                  ],
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedDateFilter,
+                    icon: const Icon(Icons.calendar_today, size: 16, color: Color(0xFF427AB5)),
+                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          selectedDateFilter = newValue;
+                        });
+                      }
+                    },
+                    items: <String>['Semua Waktu', 'Hari Ini', '3 Hari Terakhir', 'Seminggu Terakhir']
+                        .map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: Text(value),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
+                  ],
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedStatusFilter,
+                    icon: const Icon(Icons.filter_list_rounded, size: 16, color: Color(0xFF427AB5)),
+                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          selectedStatusFilter = newValue;
+                        });
+                      }
+                    },
+                    items: <String>['Semua Status', 'Diantar', 'Selesai']
+                        .map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: Text(value),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
           ),
 
           const SizedBox(height: 15),
@@ -241,11 +349,34 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
                   String resiAsal = (data["resiAsal"] ?? "").toString().toLowerCase();
                   String user = (data["user"] ?? "").toString().toLowerCase();
                   String uidCode = (data["userIdCode"] ?? "").toString().toLowerCase();
+                  String status = (data["status"] ?? "Dikirim");
+                  String mappedStatus = status == "Selesai" ? "Selesai" : "Diantar";
                   
-                  return resi.contains(_searchQuery) || 
+                  bool matchesStatus = true;
+                  if (selectedStatusFilter != "Semua Status") {
+                    matchesStatus = (mappedStatus == selectedStatusFilter);
+                  }
+                  
+                  bool matchesDate = true;
+                  if (selectedDateFilter != "Semua Waktu" && data["createdAt"] != null) {
+                    DateTime createdAt = (data["createdAt"] as Timestamp).toDate();
+                    DateTime now = DateTime.now();
+                    DateTime today = DateTime(now.year, now.month, now.day);
+                    DateTime docDate = DateTime(createdAt.year, createdAt.month, createdAt.day);
+                    
+                    if (selectedDateFilter == "Hari Ini") {
+                      matchesDate = docDate.isAtSameMomentAs(today);
+                    } else if (selectedDateFilter == "3 Hari Terakhir") {
+                      matchesDate = docDate.isAfter(today.subtract(const Duration(days: 3)));
+                    } else if (selectedDateFilter == "Seminggu Terakhir") {
+                      matchesDate = docDate.isAfter(today.subtract(const Duration(days: 7)));
+                    }
+                  }
+
+                  return (resi.contains(_searchQuery) || 
                          resiAsal.contains(_searchQuery) || 
                          user.contains(_searchQuery) || 
-                         uidCode.contains(_searchQuery);
+                         uidCode.contains(_searchQuery)) && matchesDate && matchesStatus;
                 }).toList();
 
                 if (docs.isEmpty) {
@@ -293,16 +424,22 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
                                     item["tanggal"] ?? "-",
                                     style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey),
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: (item["pembayaran"] == "COD" ? Colors.blue : Colors.purple).withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      item["pembayaran"] ?? "TF",
-                                      style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: (item["pembayaran"] == "COD" ? Colors.blue : Colors.purple)),
-                                    ),
+                                  Row(
+                                    children: [
+                                      _buildStatusBadge(item["status"] ?? "Dikirim"),
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: (item["pembayaran"] == "COD" ? Colors.blue : Colors.purple).withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          item["pembayaran"] ?? "TF",
+                                          style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: (item["pembayaran"] == "COD" ? Colors.blue : Colors.purple)),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),

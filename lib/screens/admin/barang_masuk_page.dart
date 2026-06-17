@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import 'dart:math';
+import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../services/package_service.dart';
@@ -23,6 +24,7 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
   bool _isLoading = false;
   final ReportService _reportService = ReportService();
   String selectedFilter = "All"; // Untuk filter tabel UI
+  String selectedDateFilter = "Semua Waktu"; // Untuk filter tanggal
   final FocusNode _searchFocusNode = FocusNode();
 
   bool get isMobile => MediaQuery.of(context).size.width < 800;
@@ -204,7 +206,7 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                     const Text("Input Barang Masuk", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A))),
                     const SizedBox(height: 25),
 
-                    const Text("ID User (Cari SP-XXXXX)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text("ID User (Cari SP-XXXXX) *", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 8),
                     Autocomplete<Map<String, dynamic>>(
                       displayStringForOption: (option) => "${option['userIdCode'] ?? ''} - ${option['name'] ?? ''}",
@@ -239,8 +241,10 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                         Expanded(
                           child: TextField(
                             controller: resi,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                             decoration: InputDecoration(
-                              labelText: "No Resi",
+                              labelText: "No Resi *",
                               prefixIcon: const Icon(Icons.qr_code_rounded),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
                             ),
@@ -291,8 +295,9 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                       controller: berat,
                       onChanged: (v) => setStateDialog(() {}),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
                       decoration: InputDecoration(
-                        labelText: "Berat (gram)",
+                        labelText: "Berat (gram) *",
                         prefixIcon: const Icon(Icons.monitor_weight_outlined),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
                       ),
@@ -313,20 +318,20 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                     ),
 
                     const SizedBox(height: 15),
-                    const Text("Dimensi Paket (cm)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text("Dimensi Paket (cm) *", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Expanded(child: TextField(controller: panjang, keyboardType: TextInputType.number, onChanged: (v) { cekKategori(); setStateDialog(() {}); }, decoration: const InputDecoration(labelText: "P", border: OutlineInputBorder()))),
+                        Expanded(child: TextField(controller: panjang, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))], onChanged: (v) { cekKategori(); setStateDialog(() {}); }, decoration: const InputDecoration(labelText: "P *", border: OutlineInputBorder()))),
                         const SizedBox(width: 10),
-                        Expanded(child: TextField(controller: lebar, keyboardType: TextInputType.number, onChanged: (v) { cekKategori(); setStateDialog(() {}); }, decoration: const InputDecoration(labelText: "L", border: OutlineInputBorder()))),
+                        Expanded(child: TextField(controller: lebar, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))], onChanged: (v) { cekKategori(); setStateDialog(() {}); }, decoration: const InputDecoration(labelText: "L *", border: OutlineInputBorder()))),
                         const SizedBox(width: 10),
-                        Expanded(child: TextField(controller: tinggi, keyboardType: TextInputType.number, onChanged: (v) { cekKategori(); setStateDialog(() {}); }, decoration: const InputDecoration(labelText: "T", border: OutlineInputBorder()))),
+                        Expanded(child: TextField(controller: tinggi, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))], onChanged: (v) { cekKategori(); setStateDialog(() {}); }, decoration: const InputDecoration(labelText: "T *", border: OutlineInputBorder()))),
                       ],
                     ),
 
                     const SizedBox(height: 20),
-                    const Text("Foto Paket (Maks 3)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text("Foto Paket (Maksimal 3 Foto)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 8),
                     Row(
                       children: [
@@ -369,12 +374,20 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                                 }
 
                                 if (selectedUserUid == null || resi.text.isEmpty || berat.text.isEmpty || panjang.text.isEmpty || lebar.text.isEmpty || tinggi.text.isEmpty || kategori == "-") {
+                                  List<String> missingFields = [];
+                                  if (selectedUserUid == null && (userFieldCtrl == null || userFieldCtrl!.text.isEmpty)) missingFields.add("ID User");
+                                  if (resi.text.isEmpty) missingFields.add("No Resi");
+                                  if (berat.text.isEmpty) missingFields.add("Berat");
+                                  if (panjang.text.isEmpty) missingFields.add("Panjang (P)");
+                                  if (lebar.text.isEmpty) missingFields.add("Lebar (L)");
+                                  if (tinggi.text.isEmpty) missingFields.add("Tinggi (T)");
+
                                   setStateDialog(() => isSaving = false);
                                   showDialog(
                                     context: context, 
                                     builder: (ctx) => AlertDialog(
                                       title: const Text("Validasi Gagal"), 
-                                      content: const Text("Harap lengkapi semua data dan dimensi paket."), 
+                                      content: Text("Harap lengkapi kolom wajib berikut:\n\n- ${missingFields.join('\n- ')}"), 
                                       actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("OK"))]
                                     )
                                   );
@@ -436,6 +449,8 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
   void showFormEdit(Map<String, dynamic> item) {
     List<String> base64Images = List<String>.from(item["images"] ?? []);
     List<String> requestedBase64Images = List<String>.from(item["requestedImages"] ?? []);
+    XFile? selectedVideo;
+    String? existingVideoUrl = item["requestedVideoUrl"];
     bool isSaving = false;
 
     showDialog(
@@ -450,6 +465,16 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
               if (img != null) {
                 final bytes = await img.readAsBytes();
                 setStateDialog(() => targetList.add(base64Encode(bytes)));
+              }
+            } catch (e) { debugPrint(e.toString()); }
+          }
+
+          Future<void> pickVideo() async {
+            try {
+              final picker = ImagePicker();
+              final vid = await picker.pickVideo(source: ImageSource.gallery);
+              if (vid != null) {
+                setStateDialog(() => selectedVideo = vid);
               }
             } catch (e) { debugPrint(e.toString()); }
           }
@@ -490,7 +515,7 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                       ),
                     Text("No Resi: ${item["resi"]}", style: const TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 20),
-                    const Text("Foto Paket Awal (Maks 3)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text("Foto Paket Awal (Maksimal 3 Foto)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 8),
                     Row(
                       children: [
@@ -504,7 +529,7 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
 
                     if (item["catatanUser"] != null) ...[
                       const SizedBox(height: 25),
-                      const Text("Foto Permintaan User (Maks 3)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF427AB5))),
+                      const Text("Foto Permintaan User (Maksimal 3 Foto)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF427AB5))),
                       const SizedBox(height: 8),
                       Row(
                         children: [
@@ -513,6 +538,35 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                             return Stack(children: [Container(margin: const EdgeInsets.only(right: 10), width: 70, height: 70, decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), image: DecorationImage(image: MemoryImage(base64Decode(entry.value)), fit: BoxFit.cover))), Positioned(top: 0, right: 10, child: GestureDetector(onTap: () => setStateDialog(() => requestedBase64Images.removeAt(idx)), child: Container(decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle), child: const Icon(Icons.close, color: Colors.white, size: 16))))]);
                           }),
                           if (requestedBase64Images.length < 3) GestureDetector(onTap: () => pickImage(requestedBase64Images), child: Container(width: 70, height: 70, decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(10), color: Colors.grey.shade50), child: const Icon(Icons.add_a_photo_outlined, color: Color(0xFF427AB5)))),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      const Text("Video Permintaan User (Opsional, Maks 1)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF427AB5))),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          if (existingVideoUrl != null && selectedVideo == null)
+                            Stack(
+                              children: [
+                                Container(
+                                  width: 100, height: 70, decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(10)),
+                                  child: const Center(child: Icon(Icons.play_circle_fill, color: Colors.white, size: 30)),
+                                ),
+                                Positioned(top: 0, right: 0, child: GestureDetector(onTap: () => setStateDialog(() => existingVideoUrl = null), child: Container(decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle), child: const Icon(Icons.close, color: Colors.white, size: 16))))
+                              ]
+                            )
+                          else if (selectedVideo != null)
+                            Stack(
+                              children: [
+                                Container(
+                                  width: 100, height: 70, decoration: BoxDecoration(color: Colors.indigo.shade100, borderRadius: BorderRadius.circular(10)),
+                                  child: const Center(child: Icon(Icons.video_file, color: Colors.indigo, size: 30)),
+                                ),
+                                Positioned(top: 0, right: 0, child: GestureDetector(onTap: () => setStateDialog(() => selectedVideo = null), child: Container(decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle), child: const Icon(Icons.close, color: Colors.white, size: 16))))
+                              ]
+                            )
+                          else
+                            GestureDetector(onTap: pickVideo, child: Container(width: 100, height: 70, decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(10), color: Colors.grey.shade50), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: const [Icon(Icons.video_library, color: Color(0xFF427AB5)), SizedBox(height: 4), Text("Pilih Video", style: TextStyle(fontSize: 10, color: Colors.grey))]))),
                         ],
                       ),
                     ],
@@ -527,11 +581,17 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                             onPressed: isSaving ? null : () async {
                               setStateDialog(() => isSaving = true);
                               try {
+                                String? finalVideoUrl = existingVideoUrl;
+                                if (selectedVideo != null) {
+                                  finalVideoUrl = await _packageService.uploadVideoToStorage(selectedVideo!);
+                                }
+
                                 await _packageService.updatePackageImages(
                                   item["resi"], 
                                   item["userId"], 
                                   base64Images,
                                   requestedImages: requestedBase64Images,
+                                  requestedVideoUrl: finalVideoUrl,
                                   isFulfillingRequest: item["catatanUser"] != null
                                 );
                                 
@@ -661,43 +721,79 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
           const SizedBox(height: 15),
           
           // SEARCH BAR (Neat & Aligned)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              width: isMobile ? double.infinity : 300,
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                onChanged: (v) => setState(() {}),
-                style: const TextStyle(fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: "Cari Resi atau Nama...",
-                  hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
-                  prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF427AB5), size: 18),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+          Wrap(
+            spacing: 15,
+            runSpacing: 15,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Container(
+                width: isMobile ? double.infinity : 300,
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  onChanged: (v) => setState(() {}),
+                  style: const TextStyle(fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: "Cari Resi atau Nama...",
+                    hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
+                    prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF427AB5), size: 18),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 ),
               ),
-            ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
+                  ],
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedDateFilter,
+                    icon: const Icon(Icons.calendar_today, size: 16, color: Color(0xFF427AB5)),
+                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          selectedDateFilter = newValue;
+                        });
+                      }
+                    },
+                    items: <String>['Semua Waktu', 'Hari Ini', '3 Hari Terakhir', 'Seminggu Terakhir']
+                        .map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: Text(value),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
           ),
 
           const SizedBox(height: 15),
           Row(
             children: [
               _filterTab("All"),
-              _filterTab("Kecil"),
-              _filterTab("Sedang"),
-              _filterTab("Besar"),
+              _filterTab("Request"),
             ],
           ),
           const SizedBox(height: 15),
@@ -735,8 +831,29 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                   String resi = (item["resi"] ?? "").toString().toLowerCase();
                   String nama = (item["nama"] ?? "").toString().toLowerCase();
                   bool matchesQuery = resi.contains(query) || nama.contains(query);
-                  bool matchesFilter = (selectedFilter == "All") || (item["kategori"] == selectedFilter);
-                  return matchesQuery && matchesFilter;
+                  
+                  bool matchesFilter = true;
+                  if (selectedFilter == "Request") {
+                    matchesFilter = item["catatanUser"] != null && item["catatanUser"].toString().isNotEmpty;
+                  }
+                  
+                  bool matchesDate = true;
+                  if (selectedDateFilter != "Semua Waktu" && item["createdAt"] != null) {
+                    DateTime createdAt = (item["createdAt"] as Timestamp).toDate();
+                    DateTime now = DateTime.now();
+                    DateTime today = DateTime(now.year, now.month, now.day);
+                    DateTime docDate = DateTime(createdAt.year, createdAt.month, createdAt.day);
+                    
+                    if (selectedDateFilter == "Hari Ini") {
+                      matchesDate = docDate.isAtSameMomentAs(today);
+                    } else if (selectedDateFilter == "3 Hari Terakhir") {
+                      matchesDate = docDate.isAfter(today.subtract(const Duration(days: 3)));
+                    } else if (selectedDateFilter == "Seminggu Terakhir") {
+                      matchesDate = docDate.isAfter(today.subtract(const Duration(days: 7)));
+                    }
+                  }
+
+                  return matchesQuery && matchesFilter && matchesDate;
                 }).toList();
 
                 if (filteredDocs.isEmpty) return const Center(child: Text("Data tidak ditemukan"));
@@ -917,9 +1034,7 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
   Widget _filterTab(String title) {
     bool active = selectedFilter == title;
     Color tabColor = const Color(0xFF427AB5);
-    if (title == "Kecil") tabColor = Colors.redAccent;
-    if (title == "Sedang") tabColor = Colors.orangeAccent;
-    if (title == "Besar") tabColor = Colors.greenAccent;
+    if (title == "Request") tabColor = const Color(0xFF4F46E5);
 
     return GestureDetector(
       onTap: () => setState(() => selectedFilter = title),

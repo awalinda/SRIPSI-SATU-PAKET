@@ -19,6 +19,8 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
   String _searchQuery = "";
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  String selectedDateFilter = "Semua Waktu";
+  String selectedStatusFilter = "Semua Status";
 
   bool get isMobile => MediaQuery.of(context).size.width < 800;
 
@@ -460,35 +462,101 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
                 ],
               ),
           const SizedBox(height: 20),
-          // 🔥 SEARCH BAR (Neat & Minimalist)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              width: isMobile ? double.infinity : 300,
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
-                style: const TextStyle(fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: "Cari Nama atau Resi...",
-                  hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
-                  prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF427AB5), size: 18),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+          // 🔥 SEARCH BAR & FILTERS (Neat & Minimalist)
+          Wrap(
+            spacing: 15,
+            runSpacing: 15,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Container(
+                width: isMobile ? double.infinity : 300,
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+                  style: const TextStyle(fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: "Cari Nama atau Resi...",
+                    hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
+                    prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF427AB5), size: 18),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 ),
               ),
-            ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
+                  ],
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedDateFilter,
+                    icon: const Icon(Icons.calendar_today, size: 16, color: Color(0xFF427AB5)),
+                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          selectedDateFilter = newValue;
+                        });
+                      }
+                    },
+                    items: <String>['Semua Waktu', 'Hari Ini', '3 Hari Terakhir', 'Seminggu Terakhir']
+                        .map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Padding(padding: const EdgeInsets.only(right: 8.0), child: Text(value)),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
+                  ],
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedStatusFilter,
+                    icon: const Icon(Icons.filter_list_rounded, size: 16, color: Color(0xFF427AB5)),
+                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          selectedStatusFilter = newValue;
+                        });
+                      }
+                    },
+                    items: <String>['Semua Status', 'Menunggu Konfirmasi', 'Diproses']
+                        .map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Padding(padding: const EdgeInsets.only(right: 8.0), child: Text(value)),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 25),
           StreamBuilder<QuerySnapshot>(
@@ -508,6 +576,8 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
                 String nama = (data["nama"] ?? "").toString().toLowerCase();
                 String uid = (data["userIdCode"] ?? "").toString().toLowerCase();
                 String tgl = (data["tanggal"] ?? "").toString().toLowerCase();
+                String status = (data["status"] ?? "Menunggu Konfirmasi");
+                
                 // Jika tanggal null, coba ambil dari createdAt
                 if (data["createdAt"] != null && tgl == "") {
                   if (data["createdAt"] is Timestamp) {
@@ -517,7 +587,30 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
                   }
                 }
                 
-                return nama.contains(_searchQuery) || uid.contains(_searchQuery) || tgl.contains(_searchQuery);
+                bool matchesQuery = nama.contains(_searchQuery) || uid.contains(_searchQuery) || tgl.contains(_searchQuery);
+                
+                bool matchesStatus = true;
+                if (selectedStatusFilter != "Semua Status") {
+                  matchesStatus = (status == selectedStatusFilter);
+                }
+                
+                bool matchesDate = true;
+                if (selectedDateFilter != "Semua Waktu" && data["createdAt"] != null) {
+                  DateTime createdAt = (data["createdAt"] as Timestamp).toDate();
+                  DateTime now = DateTime.now();
+                  DateTime today = DateTime(now.year, now.month, now.day);
+                  DateTime docDate = DateTime(createdAt.year, createdAt.month, createdAt.day);
+                  
+                  if (selectedDateFilter == "Hari Ini") {
+                    matchesDate = docDate.isAtSameMomentAs(today);
+                  } else if (selectedDateFilter == "3 Hari Terakhir") {
+                    matchesDate = docDate.isAfter(today.subtract(const Duration(days: 3)));
+                  } else if (selectedDateFilter == "Seminggu Terakhir") {
+                    matchesDate = docDate.isAfter(today.subtract(const Duration(days: 7)));
+                  }
+                }
+
+                return matchesQuery && matchesStatus && matchesDate;
               }).toList();
 
               // Urutkan: Menunggu Konfirmasi dulu, baru Diproses

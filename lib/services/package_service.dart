@@ -1,4 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'notification_service.dart';
 
 class PackageService {
@@ -134,7 +138,7 @@ class PackageService {
   }
 
   // 🔥 UPDATE PACKAGE IMAGES (Admin)
-  Future<void> updatePackageImages(String resi, String? uid, List<String> initialImages, {List<String>? requestedImages, bool isFulfillingRequest = false}) async {
+  Future<void> updatePackageImages(String resi, String? uid, List<String> initialImages, {List<String>? requestedImages, String? requestedVideoUrl, bool isFulfillingRequest = false}) async {
     final batch = _firestore.batch();
     
     final adminPkgs = await _firestore.collection('packages_admin')
@@ -148,8 +152,9 @@ class PackageService {
         "images": initialImages, 
       };
 
-      if (isFulfillingRequest && requestedImages != null) {
-        updateData["requestedImages"] = requestedImages;
+      if (isFulfillingRequest && (requestedImages != null || requestedVideoUrl != null)) {
+        if (requestedImages != null) updateData["requestedImages"] = requestedImages;
+        if (requestedVideoUrl != null) updateData["requestedVideoUrl"] = requestedVideoUrl;
         updateData["catatanUser"] = FieldValue.delete();
       }
 
@@ -164,8 +169,9 @@ class PackageService {
           "isUpdatedByAdmin": true
         };
 
-        if (isFulfillingRequest && requestedImages != null) {
-          updateData["requestedImages"] = requestedImages;
+        if (isFulfillingRequest && (requestedImages != null || requestedVideoUrl != null)) {
+          if (requestedImages != null) updateData["requestedImages"] = requestedImages;
+          if (requestedVideoUrl != null) updateData["requestedVideoUrl"] = requestedVideoUrl;
           updateData["catatanUser"] = FieldValue.delete();
         }
 
@@ -184,5 +190,29 @@ class PackageService {
         .collection('packages')
         .doc(packageId)
         .update({"isUpdatedByAdmin": FieldValue.delete()});
+  }
+
+  // 🔥 UPLOAD VIDEO
+  Future<String?> uploadVideoToStorage(XFile videoFile) async {
+    try {
+      String fileName = 'packages/videos/vid_${DateTime.now().millisecondsSinceEpoch}.mp4';
+      Reference ref = FirebaseStorage.instance.ref().child(fileName);
+      
+      if (kIsWeb) {
+        final bytes = await videoFile.readAsBytes();
+        SettableMetadata metadata = SettableMetadata(contentType: 'video/mp4');
+        UploadTask uploadTask = ref.putData(bytes, metadata);
+        TaskSnapshot snapshot = await uploadTask;
+        return await snapshot.ref.getDownloadURL();
+      } else {
+        File file = File(videoFile.path);
+        UploadTask uploadTask = ref.putFile(file);
+        TaskSnapshot snapshot = await uploadTask;
+        return await snapshot.ref.getDownloadURL();
+      }
+    } catch (e) {
+      print("Error uploading video: $e");
+      return null;
+    }
   }
 }

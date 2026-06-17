@@ -215,4 +215,46 @@ class PackageService {
       return null;
     }
   }
+  // 🔥 UPDATE USER APPROVAL STATUS (User)
+  Future<void> updateUserApprovalStatus(String uid, String packageId, String resi, String status, {String? reason}) async {
+    final batch = _firestore.batch();
+    
+    Map<String, dynamic> updateData = {"userApprovalStatus": status};
+    if (reason != null) updateData["rejectionReason"] = reason;
+
+    // Update the user's package document
+    DocumentReference userPkgRef = _firestore.collection('user').doc(uid).collection('packages').doc(packageId);
+    batch.update(userPkgRef, updateData);
+
+    // Update all matching admin documents
+    final adminPkgs = await _firestore.collection('packages_admin')
+        .where('resi', isEqualTo: resi)
+        .where('userId', isEqualTo: uid)
+        .get();
+        
+    for (var doc in adminPkgs.docs) {
+      batch.update(doc.reference, updateData);
+    }
+
+    await batch.commit();
+  }
+
+  // 🔥 DELETE PACKAGE BY ADMIN (Admin)
+  Future<void> deletePackageByAdmin(String adminDocId, String resi, String? uid) async {
+    final batch = _firestore.batch();
+    
+    // Delete from packages_admin collection
+    DocumentReference adminPkgRef = _firestore.collection('packages_admin').doc(adminDocId);
+    batch.delete(adminPkgRef);
+
+    // Delete from user's collection if user is specified
+    if (uid != null) {
+      final userPkgs = await _firestore.collection('user').doc(uid).collection('packages').where('resi', isEqualTo: resi).get();
+      for (var doc in userPkgs.docs) {
+        batch.delete(doc.reference);
+      }
+    }
+
+    await batch.commit();
+  }
 }

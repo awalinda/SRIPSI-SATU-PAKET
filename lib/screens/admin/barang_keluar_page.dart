@@ -582,6 +582,45 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
                     ],
                   ),
                 ),
+                if (item["rating"] != null) ...[
+                  const SizedBox(height: 25),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.orange.withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text("Ulasan Pelanggan:", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFF1E293B))),
+                            const Spacer(),
+                            Row(
+                              children: List.generate(5, (index) {
+                                return Icon(
+                                  index < (item["rating"] as num).toInt() ? Icons.star_rounded : Icons.star_border_rounded,
+                                  color: Colors.amber,
+                                  size: 18,
+                                );
+                              }),
+                            ),
+                          ],
+                        ),
+                        if (item["reviewText"] != null && item["reviewText"].toString().isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            "\"${item["reviewText"]}\"",
+                            style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.black87),
+                          ),
+                        ]
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

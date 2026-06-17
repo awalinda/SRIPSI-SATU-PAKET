@@ -121,33 +121,35 @@ class _KonsolidasiPageState extends State<KonsolidasiPage> {
   int get totalHarga {
     int total = 0;
     
-    // 1. Hitung Berat (Konversi gram ke KG)
-    double beratKg = widget.totalBerat / 1000;
-    // Pembulatan ke atas (> 1kg -> 2kg, dsb)
-    double beratBulat = beratKg.ceilToDouble();
-    if (beratBulat < 1) beratBulat = 1;
+    // Biaya Tambahan Foto
+    total += _totalBiayaFoto;
+    
+    // Biaya Konsolidasi per Paket (Rp 2.000 / paket)
+    total += widget.selectedPaket.length * 2000;
 
-    // 2. Biaya Dasar Paket (Berat Terhitung x Harga Per KG)
-    total += (beratBulat * hargaPerKg).toInt();
+    // Jika pembayaran BUKAN COD (misal Transfer / Antar), maka ada ongkos kirim
+    if (selectedPembayaran != "COD") {
+      // 1. Hitung Berat (Konversi gram ke KG)
+      double beratKg = widget.totalBerat / 1000;
+      double beratBulat = beratKg.ceilToDouble();
+      if (beratBulat < 1) beratBulat = 1;
 
-    // 3. Biaya Tambahan Layanan (Reguler/Express)
-    int serviceFee = pengirimanHarga[selectedPengiriman] ?? 0;
-    total += serviceFee;
+      // 2. Biaya Dasar Paket (Berat Terhitung x Harga Per KG)
+      total += (beratBulat * hargaPerKg).toInt();
 
-    // 4. Biaya Pengemasan (Bubble Wrap, dll)
-    if (tipe == "antar") {
-      for (var p in pengemasan) {
-        if (p["checked"] == true) {
-          total += p["harga"] as int;
+      // 3. Biaya Tambahan Layanan (Reguler/Express)
+      int serviceFee = pengirimanHarga[selectedPengiriman] ?? 0;
+      total += serviceFee;
+
+      // 4. Biaya Pengemasan (Bubble Wrap, dll)
+      if (tipe == "antar") {
+        for (var p in pengemasan) {
+          if (p["checked"] == true) {
+            total += p["harga"] as int;
+          }
         }
       }
     }
-
-    // 5. Biaya Tambahan Foto
-    total += _totalBiayaFoto;
-    
-    // 6. Biaya Konsolidasi per Paket (Rp 2.000 / paket)
-    total += widget.selectedPaket.length * 2000;
     
     return total;
   }
@@ -572,7 +574,11 @@ class _KonsolidasiPageState extends State<KonsolidasiPage> {
                   ),
                   const Divider(height: 20),
                   _buildCostRow("Biaya Konsolidasi (${widget.selectedPaket.length} Paket)", formatHarga(widget.selectedPaket.length * 2000)),
-                  _buildCostRow("Biaya Pengiriman", formatHarga(((widget.totalBerat / 1000).ceil() < 1 ? 1 : (widget.totalBerat / 1000).ceil()) * hargaPerKg)),
+                  
+                  if (selectedPembayaran != "COD") ...[
+                    _buildCostRow("Biaya Pengiriman", formatHarga(((widget.totalBerat / 1000).ceil() < 1 ? 1 : (widget.totalBerat / 1000).ceil()) * hargaPerKg)),
+                  ],
+
                   if (tipe == "antar") ...[
                     _buildCostRow("Layanan ${selectedPengiriman}", formatHarga(pengirimanHarga[selectedPengiriman] ?? 0)),
                     ...pengemasan.where((p) => p["checked"] == true).map((p) => 

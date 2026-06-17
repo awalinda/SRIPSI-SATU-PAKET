@@ -573,7 +573,24 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                     const SizedBox(height: 30),
                     Row(
                       children: [
-                        Expanded(child: TextButton(onPressed: () => Navigator.pop(context), child: const Text("Tutup"))),
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(foregroundColor: Colors.red, side: const BorderSide(color: Colors.red), padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+                            onPressed: () async {
+                              try {
+                                await _packageService.deletePackageByAdmin(item["id"] ?? "", item["resi"] ?? "", item["userId"]);
+                                if (mounted) {
+                                  CustomNotification.showSuccess(context, "Paket berhasil dihapus!");
+                                  Navigator.pop(context);
+                                }
+                              } catch(e) {
+                                if (mounted) CustomNotification.showError(context, "Gagal menghapus: $e");
+                              }
+                            },
+                            child: const Text("Hapus", style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
                         const SizedBox(width: 15),
                         Expanded(
                           child: ElevatedButton(
@@ -868,8 +885,11 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                   ),
                   itemCount: filteredDocs.length,
                   itemBuilder: (context, index) {
-                    var item = filteredDocs[index].data() as Map<String, dynamic>;
+                    var doc = filteredDocs[index];
+                    var item = doc.data() as Map<String, dynamic>;
+                    item["id"] = doc.id;
                     bool hasNote = item["catatanUser"] != null;
+                    bool isRejected = item["userApprovalStatus"] == "rejected";
                     Color katColor = _getKategoriColor(item["kategori"]);
 
                     return InkWell(
@@ -882,14 +902,14 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                           borderRadius: BorderRadius.circular(18),
                           boxShadow: [
                             BoxShadow(
-                              color: hasNote ? Colors.indigo.withOpacity(0.15) : const Color(0xFF427AB5).withOpacity(0.1),
+                              color: isRejected ? Colors.red.withOpacity(0.15) : hasNote ? Colors.indigo.withOpacity(0.15) : const Color(0xFF427AB5).withOpacity(0.1),
                               blurRadius: 15,
                               offset: const Offset(0, 8),
                             ),
                           ],
                           border: Border.all(
-                            color: hasNote ? Colors.indigo.withOpacity(0.6) : const Color(0xFF427AB5).withOpacity(0.2), 
-                            width: hasNote ? 2 : 1.2
+                            color: isRejected ? Colors.red.withOpacity(0.6) : hasNote ? Colors.indigo.withOpacity(0.6) : const Color(0xFF427AB5).withOpacity(0.2), 
+                            width: (hasNote || isRejected) ? 2 : 1.2
                           ),
                         ),
                         child: Column(
@@ -899,9 +919,11 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  colors: hasNote 
-                                    ? [const Color(0xFF6366F1), const Color(0xFF4F46E5)] // Indigo/Violet modern
-                                    : [const Color(0xFF427AB5), const Color(0xFF2C5282)],
+                                  colors: isRejected 
+                                    ? [const Color(0xFFEF4444), const Color(0xFFB91C1C)]
+                                    : hasNote 
+                                      ? [const Color(0xFF6366F1), const Color(0xFF4F46E5)] // Indigo/Violet modern
+                                      : [const Color(0xFF427AB5), const Color(0xFF2C5282)],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
@@ -917,7 +939,22 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  if (hasNote)
+                                  if (isRejected)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(6),
+                                        boxShadow: [
+                                          BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2))
+                                        ],
+                                      ),
+                                      child: const Text(
+                                        "DITOLAK USER", 
+                                        style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)
+                                      ),
+                                    )
+                                  else if (hasNote)
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                       decoration: BoxDecoration(

@@ -38,37 +38,113 @@ class _AlamatPageState extends State<AlamatPage> {
     "Tanggamus",
   ];
 
+  // DATA KECAMATAN (Dinamis berdasarkan Kabupaten)
+  // DATA KECAMATAN (Dinamis berdasarkan Kabupaten - Seluruh Lampung)
+  final Map<String, List<String>> kecamatanMap = {
+    "Bandar Lampung": [
+      "Bumi Waras", "Enggal", "Kedamaian", "Kedaton", "Kemiling", "Labuhan Ratu",
+      "Langgkapura", "Panjang", "Rajabasa", "Sukabumi", "Sukarame", "Tanjung Karang Barat",
+      "Tanjung Karang Pusat", "Tanjung Karang Timur", "Tanjung Senang", "Teluk Betung Barat",
+      "Teluk Betung Selatan", "Teluk Betung Timur", "Teluk Betung Utara", "Way Halim"
+    ],
+    "Metro": [
+      "Metro Barat", "Metro Pusat", "Metro Selatan", "Metro Timur", "Metro Utara"
+    ],
+    "Lampung Selatan": [
+      "Bakauheni", "Candipuro", "Jati Agung", "Kalianda", "Katibung", "Ketapang", 
+      "Merbau Mataram", "Natar", "Palas", "Penengahan", "Rajabasa", "Sidomulyo", 
+      "Sragi", "Tanjung Bintang", "Tanjung Sari", "Way Panji", "Way Sulan"
+    ],
+    "Lampung Tengah": [
+      "Anak Ratu Aji", "Anak Tuha", "Bandar Mataram", "Bandar Surabaya", "Bangunrejo", 
+      "Bekri", "Bumi Nabung", "Bumi Ratu Nuban", "Gunung Sugih", "Kalirejo", "Kota Gajah", 
+      "Padang Ratu", "Pubian", "Punggur", "Putra Rumbia", "Rumbia", "Selagai Lingga", 
+      "Sendang Agung", "Seputih Agung", "Seputih Banyak", "Seputih Mataram", "Seputih Raman", 
+      "Seputih Surabaya", "Terbanggi Besar", "Terusan Nunyai", "Trimurjo", "Way Pengubuan", "Way Seputih"
+    ],
+    "Lampung Timur": [
+      "Bandar Sribhawono", "Batanghari", "Batanghari Nuban", "Braja Selebah", "Bumi Agung", 
+      "Gunung Pelindung", "Jabung", "Labuhan Maringgai", "Labuhan Ratu", "Marga Sekampung", 
+      "Marga Tiga", "Mataram Baru", "Melinting", "Metro Kibang", "Pasir Sakti", "Pekalongan", 
+      "Purbolinggo", "Raman Utara", "Sekampung", "Sekampung Udik", "Sukadana", "Waway Karya", 
+      "Way Bungur", "Way Jepara"
+    ],
+    "Lampung Utara": [
+      "Abung Barat", "Abung Kunang", "Abung Pekurun", "Abung Selatan", 
+      "Abung Semuli", "Abung Surakarta", "Abung Tengah", "Abung Timur", 
+      "Abung Tinggi", "Blambangan Pagar", "Bukit Kemuning", "Bunga Mayang", 
+      "Hulu Sungkai", "Kotabumi", "Kotabumi Selatan", "Kotabumi Utara", 
+      "Muara Sungkai", "Sungkai Utara", "Sungkai Barat", "Sungkai Jaya", 
+      "Sungkai Selatan", "Sungkai Tengah", "Tanjung Raja"
+    ],
+    "Lampung Barat": [
+      "Air Hitam", "Balik Bukit", "Bandar Negeri Suoh", "Batu Brak", "Batu Ketulis", 
+      "Belalau", "Gedung Surian", "Kebun Tebu", "Lumbok Seminung", "Pagar Dewa", 
+      "Sekincau", "Sukau", "Sumber Jaya", "Suoh", "Way Tenong"
+    ],
+    "Tulang Bawang": [
+      "Banjar Agung", "Banjar Baru", "Banjar Margo", "Dente Teladas", "Gedung Aji", 
+      "Gedung Aji Baru", "Gedung Meneng", "Menggala", "Menggala Timur", "Meraksa Aji", 
+      "Penawar Aji", "Penawar Tama", "Rawa Jitu Selatan", "Rawa Jitu Timur", "Rawa Pitu"
+    ],
+    "Tulang Bawang Barat": [
+      "Batu Putih", "Gunung Agung", "Gunung Terang", "Lambu Kibang", "Pagar Dewa", 
+      "Tulang Bawang Tengah", "Tulang Bawang Udik", "Tumijajar", "Way Kenanga"
+    ],
+    "Way Kanan": [
+      "Banjit", "Baradatu", "Blambangan Umpu", "Bumi Agung", "Buay Bahuga", 
+      "Gunung Labuhan", "Kasui", "Negara Batin", "Negeri Agung", "Negeri Besar", 
+      "Pakuan Ratu", "Rebang Tangkas", "Umpu Semenguk", "Way Tuba"
+    ],
+    "Pesawaran": [
+      "Gedong Tataan", "Kedondong", "Marga Punduh", "Negeri Katon", "Padang Cermin", 
+      "Punduh Pedada", "Tegineneng", "Teluk Pandan", "Way Lima", "Way Khilau", "Way Ratai"
+    ],
+    "Pringsewu": [
+      "Adiluwih", "Ambarawa", "Banyumas", "Gading Rejo", "Pagelaran", 
+      "Pagelaran Utara", "Pardasuka", "Pringsewu", "Sukoharjo"
+    ],
+    "Pesisir Barat": [
+      "Bangkunat", "Karya Penggawa", "Krui Selatan", "Lemong", "Ngambur", 
+      "Ngaras", "Pesisir Selatan", "Pesisir Tengah", "Pesisir Utara", "Pulau Pisang", "Way Krui"
+    ],
+    "Mesuji": [
+      "Mesuji", "Mesuji Timur", "Panca Jaya", "Rawa Jitu Utara", 
+      "Simpang Pematang", "Tanjung Raya", "Way Serdang"
+    ],
+    "Tanggamus": [
+      "Air Naningan", "Bandar Negeri Semuong", "Bulok", "Cukuh Balak", "Gisting", 
+      "Gunung Alip", "Kelumbayan", "Kelumbayan Barat", "Kota Agung", "Kota Agung Barat", 
+      "Kota Agung Timur", "Limau", "Pugung", "Pulau Panggung", "Semaka", "Sumberejo", 
+      "Talang Padang", "Ulu Belu", "Wonosobo"
+    ]
+  };
+
   // 🔹 CONTROLLERS
   final _labelController = TextEditingController();
-  final _kotaController = TextEditingController();
   final _namaController = TextEditingController();
   final _kecamatanController = TextEditingController();
   final _desaController = TextEditingController();
   final _detailController = TextEditingController();
-  final _kodeposController = TextEditingController();
   final _phoneController = TextEditingController();
 
   @override
   void dispose() {
     _labelController.dispose();
-    _kotaController.dispose();
     _namaController.dispose();
     _kecamatanController.dispose();
     _desaController.dispose();
     _detailController.dispose();
-    _kodeposController.dispose();
     _phoneController.dispose();
     super.dispose();
   }
 
   void _resetForm() {
     _labelController.clear();
-    _kotaController.clear();
     _namaController.clear();
     _kecamatanController.clear();
     _desaController.clear();
     _detailController.clear();
-    _kodeposController.clear();
     _phoneController.clear();
     selectedKabupaten = null;
     editingId = null;
@@ -80,19 +156,22 @@ class _AlamatPageState extends State<AlamatPage> {
       showForm = true;
       _labelController.text = data['label'] ?? "";
       selectedKabupaten = data['kabupaten'];
-      _kotaController.text = data['kota'] ?? "";
       _namaController.text = data['namaLengkap'] ?? "";
       _kecamatanController.text = data['kecamatan'] ?? "";
       _desaController.text = data['desa'] ?? "";
       _detailController.text = data['detail'] ?? "";
-      _kodeposController.text = data['kodePos'] ?? "";
       _phoneController.text = data['telepon'] ?? "";
     });
   }
 
   Future<void> _saveAddress() async {
-    if (selectedKabupaten == null || _labelController.text.isEmpty || _namaController.text.isEmpty) {
-      CustomNotification.showError(context, "Harap isi Label, Nama, dan Kabupaten");
+    if (_labelController.text.isEmpty || 
+        _namaController.text.isEmpty || 
+        selectedKabupaten == null || 
+        _kecamatanController.text.isEmpty || 
+        _desaController.text.isEmpty || 
+        _phoneController.text.isEmpty) {
+      CustomNotification.showError(context, "Harap isi semua kolom yang wajib");
       return;
     }
 
@@ -102,12 +181,10 @@ class _AlamatPageState extends State<AlamatPage> {
         "label": _labelController.text,
         "provinsi": selectedProvinsi,
         "kabupaten": selectedKabupaten,
-        "kota": _kotaController.text,
         "namaLengkap": _namaController.text,
         "kecamatan": _kecamatanController.text,
         "desa": _desaController.text,
         "detail": _detailController.text,
-        "kodePos": _kodeposController.text,
         "telepon": _phoneController.text,
       };
 
@@ -316,8 +393,8 @@ class _AlamatPageState extends State<AlamatPage> {
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 20),
-          
-          inputField(_labelController, "Label Alamat (Contoh: Rumah, Kantor)"),
+          inputField(_labelController, "Label Alamat", isRequired: true),
+          inputField(_namaController, "Nama Penerima", isRequired: true),
 
           // 🔹 PROVINSI (FIX)
           Column(
@@ -345,7 +422,12 @@ class _AlamatPageState extends State<AlamatPage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("Kabupaten"),
+              Row(
+                children: const [
+                  Text("Kabupaten"),
+                  Text(" *", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                ],
+              ),
               const SizedBox(height: 5),
               DropdownButtonFormField<String>(
                 value: selectedKabupaten,
@@ -353,7 +435,12 @@ class _AlamatPageState extends State<AlamatPage> {
                 items: kabupatenLampung.map((kab) {
                   return DropdownMenuItem(value: kab, child: Text(kab));
                 }).toList(),
-                onChanged: (value) => setState(() => selectedKabupaten = value),
+                onChanged: (value) {
+                  setState(() {
+                    selectedKabupaten = value;
+                    _kecamatanController.clear(); // Reset kecamatan ketika kabupaten berubah
+                  });
+                },
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: Colors.grey.shade100,
@@ -367,13 +454,47 @@ class _AlamatPageState extends State<AlamatPage> {
           ),
           const SizedBox(height: 15),
 
-          inputField(_kotaController, "Kota"),
-          inputField(_namaController, "Nama Penerima"),
-          inputField(_kecamatanController, "Kecamatan"),
-          inputField(_desaController, "Nama Desa"),
+          // 🔹 KECAMATAN (Dropdown Dinamis atau TextField fallback)
+          if (selectedKabupaten != null && kecamatanMap.containsKey(selectedKabupaten)) 
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: const [
+                    Text("Kecamatan"),
+                    Text(" *", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 5),
+                DropdownButtonFormField<String>(
+                  value: kecamatanMap[selectedKabupaten]!.contains(_kecamatanController.text) ? _kecamatanController.text : null,
+                  hint: const Text("Pilih Kecamatan"),
+                  items: kecamatanMap[selectedKabupaten]!.map((kec) {
+                    return DropdownMenuItem(value: kec, child: Text(kec));
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _kecamatanController.text = value ?? "";
+                    });
+                  },
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.grey.shade100,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 15),
+              ],
+            )
+          else 
+            inputField(_kecamatanController, "Kecamatan", isRequired: true),
+
+          inputField(_desaController, "Nama Desa", isRequired: true),
           inputField(_detailController, "Detail Alamat (Jalan, No Rumah, dll)"),
-          inputField(_kodeposController, "Kode Pos"),
-          inputField(_phoneController, "Nomor Telepon Penerima", keyboardType: TextInputType.phone),
+          inputField(_phoneController, "Nomor Telepon Penerima", keyboardType: TextInputType.phone, isRequired: true),
 
           const SizedBox(height: 30),
 
@@ -409,13 +530,18 @@ class _AlamatPageState extends State<AlamatPage> {
   }
 
   // ================= INPUT =================
-  Widget inputField(TextEditingController controller, String label, {TextInputType keyboardType = TextInputType.text}) {
+  Widget inputField(TextEditingController controller, String label, {TextInputType keyboardType = TextInputType.text, bool isRequired = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label),
+          Row(
+            children: [
+              Text(label),
+              if (isRequired) const Text(" *", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            ],
+          ),
           const SizedBox(height: 5),
           TextField(
             controller: controller,

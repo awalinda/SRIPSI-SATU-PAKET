@@ -161,4 +161,35 @@ class OrderService {
     
     return beratBulat * tarifPerKg;
   }
+
+  // 🔥 Submit Ulasan
+  static Future<void> submitReview(String orderId, double rating, String reviewText) async {
+    try {
+      await _firestore.collection('orders').doc(orderId).update({
+        "rating": rating,
+        "reviewText": reviewText,
+        "reviewDate": FieldValue.serverTimestamp(),
+      });
+
+      // Sync ke pengiriman agar admin bisa melihat
+      final doc = await _firestore.collection('orders').doc(orderId).get();
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        String resiOrder = data["resi"] ?? "";
+        if (resiOrder.isNotEmpty) {
+           final pengirimanQuery = await _firestore.collection('pengiriman').where('resiAsal', isEqualTo: resiOrder).get();
+           for (var p in pengirimanQuery.docs) {
+             await p.reference.update({
+               "rating": rating,
+               "reviewText": reviewText,
+               "reviewDate": FieldValue.serverTimestamp(),
+             });
+           }
+        }
+      }
+    } catch (e) {
+      print("Error submitting review: $e");
+      rethrow;
+    }
+  }
 }

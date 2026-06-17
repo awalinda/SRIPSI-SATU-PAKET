@@ -182,6 +182,8 @@ class _PaketPageState extends State<PaketPage> {
                           var paket = doc.data() as Map<String, dynamic>;
                           String docId = doc.id;
                           bool isChecked = _selectedPackageIds.contains(docId);
+                          String userApprovalStatus = paket["userApprovalStatus"] ?? "pending";
+                          bool isApproved = userApprovalStatus == "approved";
 
                           return AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
@@ -213,6 +215,12 @@ class _PaketPageState extends State<PaketPage> {
                                       // 1. Checkbox (Hanya bagian ini yang toggle selection)
                                       GestureDetector(
                                         onTap: () {
+                                          if (!isApproved) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text("Harap konfirmasi paket terlebih dahulu di detail paket.")),
+                                            );
+                                            return;
+                                          }
                                           setState(() {
                                             if (isChecked) {
                                               _selectedPackageIds.remove(docId);
@@ -226,7 +234,7 @@ class _PaketPageState extends State<PaketPage> {
                                           padding: const EdgeInsets.only(right: 12),
                                           child: isChecked
                                             ? const Icon(Icons.check_circle, color: Color(0xFF427AB5), size: 22)
-                                            : Icon(Icons.circle_outlined, color: Colors.grey.shade300, size: 22),
+                                            : Icon(Icons.circle_outlined, color: isApproved ? Colors.grey.shade300 : Colors.grey.shade100, size: 22),
                                         ),
                                       ),
                                       
@@ -302,23 +310,40 @@ class _PaketPageState extends State<PaketPage> {
                                               ],
                                             ),
                                             const SizedBox(height: 6),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                                              decoration: BoxDecoration(
-                                                color: Colors.grey.shade50,
-                                                borderRadius: BorderRadius.circular(6),
-                                                border: Border.all(color: Colors.grey.shade200),
-                                              ),
-                                              child: Text(
-                                                (paket["berat"] ?? 0) < 1000
-                                                    ? "${paket["berat"]}g"
-                                                    : "${((paket["berat"] ?? 0) / 1000).toStringAsFixed(1)}kg",
-                                                style: TextStyle(
-                                                  color: isChecked ? const Color(0xFF427AB5) : Colors.grey.shade700,
-                                                  fontWeight: FontWeight.w900,
-                                                  fontSize: 10,
+                                            Row(
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.grey.shade50,
+                                                    borderRadius: BorderRadius.circular(6),
+                                                    border: Border.all(color: Colors.grey.shade200),
+                                                  ),
+                                                  child: Text(
+                                                    (paket["berat"] ?? 0) < 1000
+                                                        ? "${paket["berat"]}g"
+                                                        : "${((paket["berat"] ?? 0) / 1000).toStringAsFixed(1)}kg",
+                                                    style: TextStyle(
+                                                      color: isChecked ? const Color(0xFF427AB5) : Colors.grey.shade700,
+                                                      fontWeight: FontWeight.w900,
+                                                      fontSize: 10,
+                                                    ),
+                                                  ),
                                                 ),
-                                              ),
+                                                const SizedBox(width: 6),
+                                                if (userApprovalStatus == "pending")
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                                    decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.orange.shade200)),
+                                                    child: Text("Menunggu Konfirmasi", style: TextStyle(color: Colors.orange.shade800, fontSize: 9, fontWeight: FontWeight.bold)),
+                                                  )
+                                                else if (userApprovalStatus == "rejected")
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                                    decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.red.shade200)),
+                                                    child: Text("Ditolak", style: TextStyle(color: Colors.red.shade800, fontSize: 9, fontWeight: FontWeight.bold)),
+                                                  ),
+                                              ],
                                             ),
                                           ],
                                         ),

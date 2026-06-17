@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/order_service.dart';
 import '../../services/report_service.dart';
 import 'dart:convert';
+import 'dart:async';
 import '../../widgets/custom_notification.dart';
 
 class BarangKeluarPage extends StatefulWidget {
@@ -18,19 +19,44 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
   String _searchQuery = "";
   String selectedDateFilter = "Semua Waktu";
   String selectedStatusFilter = "Semua Status";
+  bool showOnlyReviewed = false;
   final FocusNode _searchFocusNode = FocusNode();
 
   bool get isMobile => MediaQuery.of(context).size.width < 800;
+
+  StreamSubscription<QuerySnapshot>? _pengirimanSub;
+  final Set<String> _knownReviewIds = {};
 
   @override
   void initState() {
     super.initState();
     // 🔥 Auto update status jika lewat 3 hari
     OrderService.checkAndAutoUpdateSelesai();
+
+    // Listen for new reviews
+    _pengirimanSub = OrderService.getPengirimanStream().listen((snapshot) {
+      if (!mounted) return;
+      for (var change in snapshot.docChanges) {
+        if (change.type == DocumentChangeType.modified) {
+          final data = change.doc.data() as Map<String, dynamic>? ?? {};
+          final docId = change.doc.id;
+          if (data['rating'] != null && !_knownReviewIds.contains(docId)) {
+            _knownReviewIds.add(docId);
+            CustomNotification.showSuccess(context, "Ada ulasan baru dari ${data['user'] ?? 'Pengguna'}!");
+          }
+        } else if (change.type == DocumentChangeType.added) {
+          final data = change.doc.data() as Map<String, dynamic>? ?? {};
+          if (data['rating'] != null) {
+            _knownReviewIds.add(change.doc.id);
+          }
+        }
+      }
+    });
   }
 
   @override
   void dispose() {
+    _pengirimanSub?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -259,17 +285,16 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Colors.blue.shade50,
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
-                  ],
+                  border: Border.all(color: Colors.blue.shade100),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: selectedDateFilter,
-                    icon: const Icon(Icons.calendar_today, size: 16, color: Color(0xFF427AB5)),
-                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                    dropdownColor: Colors.white,
+                    icon: Icon(Icons.calendar_today, size: 16, color: Colors.blue.shade700),
+                    style: TextStyle(fontSize: 13, color: Colors.blue.shade900, fontWeight: FontWeight.bold),
                     onChanged: (String? newValue) {
                       if (newValue != null) {
                         setState(() {
@@ -293,17 +318,16 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Colors.green.shade50,
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
-                  ],
+                  border: Border.all(color: Colors.green.shade100),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: selectedStatusFilter,
-                    icon: const Icon(Icons.filter_list_rounded, size: 16, color: Color(0xFF427AB5)),
-                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                    dropdownColor: Colors.white,
+                    icon: Icon(Icons.filter_list_rounded, size: 16, color: Colors.green.shade700),
+                    style: TextStyle(fontSize: 13, color: Colors.green.shade900, fontWeight: FontWeight.bold),
                     onChanged: (String? newValue) {
                       if (newValue != null) {
                         setState(() {
@@ -321,6 +345,37 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
                         ),
                       );
                     }).toList(),
+                  ),
+                ),
+              ),
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    showOnlyReviewed = !showOnlyReviewed;
+                  });
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: showOnlyReviewed ? Colors.orange : Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: showOnlyReviewed ? Colors.orange : Colors.orange.shade200),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.star_rounded, size: 16, color: showOnlyReviewed ? Colors.white : Colors.orange.shade700),
+                      const SizedBox(width: 8),
+                      Text(
+                        "Ulasan",
+                        style: TextStyle(
+                          fontSize: 13, 
+                          color: showOnlyReviewed ? Colors.white : Colors.orange.shade900, 
+                          fontWeight: FontWeight.bold
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -373,11 +428,38 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
                     }
                   }
 
+                  bool matchesUlasan = true;
+                  if (showOnlyReviewed) {
+                    matchesUlasan = data["rating"] != null;
+                  }
+
                   return (resi.contains(_searchQuery) || 
                          resiAsal.contains(_searchQuery) || 
                          user.contains(_searchQuery) || 
-                         uidCode.contains(_searchQuery)) && matchesDate && matchesStatus;
+                         uidCode.contains(_searchQuery)) && matchesDate && matchesStatus && matchesUlasan;
                 }).toList();
+
+                docs.sort((a, b) {
+                  final dataA = a.data() as Map<String, dynamic>;
+                  final dataB = b.data() as Map<String, dynamic>;
+                  
+                  String statusA = dataA["status"] ?? "Dikirim";
+                  String statusB = dataB["status"] ?? "Dikirim";
+                  bool isSelesaiA = statusA == "Selesai";
+                  bool isSelesaiB = statusB == "Selesai";
+                  
+                  if (isSelesaiA != isSelesaiB) {
+                    return isSelesaiA ? 1 : -1; // "Diantar" (-1) comes before "Selesai" (1)
+                  }
+                  
+                  // Secondary sort by date (newest first)
+                  Timestamp? timeA = dataA["createdAt"];
+                  Timestamp? timeB = dataB["createdAt"];
+                  if (timeA != null && timeB != null) {
+                    return timeB.compareTo(timeA); // newest first
+                  }
+                  return 0;
+                });
 
                 if (docs.isEmpty) {
                   return const Center(
@@ -392,7 +474,7 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
                   padding: const EdgeInsets.only(bottom: 20),
                   gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: isMobile ? MediaQuery.of(context).size.width : 350,
-                    mainAxisExtent: isMobile ? 120 : 110,
+                    mainAxisExtent: isMobile ? 140 : 130,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
                   ),
@@ -479,6 +561,37 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
                                   _UserIdCodeWidget(userId: item["userId"], initialIdCode: item["userIdCode"]),
                                 ],
                               ),
+                              if (item["rating"] != null) ...[
+                                const Spacer(),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: InkWell(
+                                    onTap: () {
+                                      _showReviewPopup(item);
+                                    },
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.star_rounded, color: Colors.orange, size: 12),
+                                          const SizedBox(width: 4),
+                                          const Text(
+                                            "Lihat Ulasan",
+                                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                       ),
@@ -489,6 +602,50 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
               },
             ),
           )
+        ],
+      ),
+    );
+  }
+
+  void _showReviewPopup(Map<String, dynamic> item) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.star_rounded, color: Colors.orange),
+            const SizedBox(width: 10),
+            const Text("Ulasan Pelanggan", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: List.generate(5, (index) {
+                return Icon(
+                  index < (item["rating"] as num).toInt() ? Icons.star_rounded : Icons.star_border_rounded,
+                  color: Colors.amber,
+                  size: 24,
+                );
+              }),
+            ),
+            const SizedBox(height: 15),
+            Text(
+              item["reviewText"] != null && item["reviewText"].toString().isNotEmpty 
+                  ? "\"${item["reviewText"]}\"" 
+                  : "Tidak ada pesan ulasan.",
+              style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: Colors.black87),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Tutup", style: TextStyle(color: Color(0xFF427AB5), fontWeight: FontWeight.bold)),
+          ),
         ],
       ),
     );

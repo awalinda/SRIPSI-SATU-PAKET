@@ -497,17 +497,16 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Colors.blue.shade50,
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
-                  ],
+                  border: Border.all(color: Colors.blue.shade100),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: selectedDateFilter,
-                    icon: const Icon(Icons.calendar_today, size: 16, color: Color(0xFF427AB5)),
-                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                    dropdownColor: Colors.white,
+                    icon: Icon(Icons.calendar_today, size: 16, color: Colors.blue.shade700),
+                    style: TextStyle(fontSize: 13, color: Colors.blue.shade900, fontWeight: FontWeight.bold),
                     onChanged: (String? newValue) {
                       if (newValue != null) {
                         setState(() {
@@ -528,17 +527,16 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Colors.green.shade50,
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
-                  ],
+                  border: Border.all(color: Colors.green.shade100),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: selectedStatusFilter,
-                    icon: const Icon(Icons.filter_list_rounded, size: 16, color: Color(0xFF427AB5)),
-                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                    dropdownColor: Colors.white,
+                    icon: Icon(Icons.filter_list_rounded, size: 16, color: Colors.green.shade700),
+                    style: TextStyle(fontSize: 13, color: Colors.green.shade900, fontWeight: FontWeight.bold),
                     onChanged: (String? newValue) {
                       if (newValue != null) {
                         setState(() {

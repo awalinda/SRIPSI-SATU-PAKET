@@ -10,6 +10,7 @@ import '../../services/package_service.dart';
 import '../../services/report_service.dart';
 import '../../services/order_service.dart';
 import '../../widgets/custom_notification.dart';
+import '../../services/notification_service.dart';
 
 class BarangMasukPage extends StatefulWidget {
   const BarangMasukPage({super.key});
@@ -126,22 +127,36 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
   }
 
   // ================= POPUP INPUT =================
-  void showFormMasuk() {
-    String? selectedUserUid;
-    String? selectedUserName;
-    String? selectedUserIdCode;
+  void showFormMasuk({Map<String, dynamic>? editItem}) {
+    String? selectedUserUid = editItem?["userId"];
+    String? selectedUserName = editItem?["nama"];
+    String? selectedUserIdCode = editItem?["userIdCode"];
     TextEditingController? userFieldCtrl;
 
-    final resi = TextEditingController();
-    final berat = TextEditingController();
-    final panjang = TextEditingController();
-    final lebar = TextEditingController();
-    final tinggi = TextEditingController();
-    final keterangan = TextEditingController();
+    final resi = TextEditingController(text: editItem?["resi"] ?? "");
+    final berat = TextEditingController(text: editItem?["berat"]?.toString() ?? "");
+    
+    // Parse dimensi if editing
+    String pStr = "";
+    String lStr = "";
+    String tStr = "";
+    if (editItem != null && editItem["dimensi"] != null) {
+      List<String> dims = editItem["dimensi"].toString().split("x");
+      if (dims.length == 3) {
+        pStr = dims[0];
+        lStr = dims[1];
+        tStr = dims[2];
+      }
+    }
+    
+    final panjang = TextEditingController(text: pStr);
+    final lebar = TextEditingController(text: lStr);
+    final tinggi = TextEditingController(text: tStr);
+    final keterangan = TextEditingController(text: editItem?["keterangan"] ?? "");
 
-    String kategori = "-";
+    String kategori = editItem?["kategori"] ?? "-";
     DateTime? tanggal = DateTime.now();
-    List<String> base64Images = [];
+    List<String> base64Images = editItem != null ? List<String>.from(editItem["images"] ?? []) : [];
     bool isSaving = false;
 
     showDialog(
@@ -209,6 +224,7 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                     const Text("ID User (Cari SP-XXXXX) *", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 8),
                     Autocomplete<Map<String, dynamic>>(
+                      initialValue: TextEditingValue(text: editItem != null ? "${editItem['userIdCode'] ?? ''} - ${editItem['nama'] ?? ''}" : ""),
                       displayStringForOption: (option) => "${option['userIdCode'] ?? ''} - ${option['name'] ?? ''}",
                       optionsBuilder: (textEditingValue) async {
                         if (textEditingValue.text.isEmpty) return const Iterable<Map<String, dynamic>>.empty();
@@ -411,26 +427,38 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                                     l: double.tryParse(lebar.text) ?? 0,
                                     t: double.tryParse(tinggi.text) ?? 0,
                                   ),
-                                  "createdAt": FieldValue.serverTimestamp(),
                                 };
 
-                                await _packageService.addIncomingPackage(selectedUserUid!, data);
-                                await _packageService.saveToAdminList(data);
-                                
-                                if (mounted) {
-                                  Navigator.pop(context); // Close the form dialog
-                                  CustomNotification.showSuccess(context, "Barang berhasil disimpan!");
+                                  if (editItem != null) {
+                                    // Set approval status to pending so user can approve, but KEEP rejectionReason
+                                    data["userApprovalStatus"] = "pending";
+                                  data["isUpdatedByAdmin"] = true;
+                                  await _packageService.updateIncomingPackage(editItem["id"], selectedUserUid, resi.text, data);
+                                  
+                                  // Notify user that package was updated
+                                  if (selectedUserUid != null) {
+                                    await NotificationService.notifyPackageUpdated(selectedUserUid!, resi.text, selectedUserName ?? "Barang");
+                                  }
+                                } else {
+                                  data["createdAt"] = FieldValue.serverTimestamp();
+                                  await _packageService.addIncomingPackage(selectedUserUid!, data);
+                                  await _packageService.saveToAdminList(data);
                                 }
-                              } catch (e) {
-                                if (mounted) {
-                                  CustomNotification.showError(context, "Error: $e");
-                                  setStateDialog(() => isSaving = false);
+                                  
+                                  if (mounted) {
+                                    Navigator.pop(context); // Close the form dialog
+                                    CustomNotification.showSuccess(context, editItem != null ? "Barang berhasil diperbarui!" : "Barang berhasil disimpan!");
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    CustomNotification.showError(context, "Error: $e");
+                                    setStateDialog(() => isSaving = false);
+                                  }
                                 }
-                              }
-                            },
-                            child: isSaving 
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                              : const Text("Simpan Data", style: TextStyle(fontWeight: FontWeight.bold)),
+                              },
+                              child: isSaving 
+                                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                : Text(editItem != null ? "Update Data" : "Simpan Data", style: const TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ),
                       ],
@@ -489,6 +517,61 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                   children: [
                     const Text("Detail & Edit Paket", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
                     const SizedBox(height: 15),
+                    
+                    if (item["rejectionReason"] != null && item["userApprovalStatus"] != "approved")
+                      Container(
+                        padding: const EdgeInsets.all(15), 
+                        margin: const EdgeInsets.only(bottom: 20), 
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50, 
+                          borderRadius: BorderRadius.circular(15), 
+                          border: Border.all(color: Colors.red.shade200)
+                        ), 
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start, 
+                          children: [
+                            Row(
+                              children: const [
+                                Icon(Icons.warning_amber_rounded, color: Colors.red), 
+                                SizedBox(width: 8), 
+                                Text("Ditolak oleh User:", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red))
+                              ]
+                            ), 
+                            const SizedBox(height: 8), 
+                            Text(item["rejectionReason"] ?? "Tidak ada alasan", style: const TextStyle(color: Colors.red)),
+                            if (item["userApprovalStatus"] == "rejected") ...[
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.pop(context); // Close showFormEdit
+                                    showFormMasuk(editItem: item); // Open showFormMasuk with prefilled data
+                                  },
+                                  icon: const Icon(Icons.edit_note_rounded, size: 18),
+                                  label: const Text("Setujui & Edit Data", style: TextStyle(fontWeight: FontWeight.bold)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red.shade600,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                ),
+                              )
+                            ] else ...[
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade100,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text("Sudah Diupdate, Menunggu Konfirmasi User", style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.bold)),
+                              )
+                            ]
+                          ]
+                        )
+                      ),
+
                     if (item["catatanUser"] != null)
                       Container(
                         padding: const EdgeInsets.all(15), 
@@ -772,17 +855,16 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Colors.blue.shade50,
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
-                  ],
+                  border: Border.all(color: Colors.blue.shade100),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: selectedDateFilter,
-                    icon: const Icon(Icons.calendar_today, size: 16, color: Color(0xFF427AB5)),
-                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                    dropdownColor: Colors.white,
+                    icon: Icon(Icons.calendar_today, size: 16, color: Colors.blue.shade700),
+                    style: TextStyle(fontSize: 13, color: Colors.blue.shade900, fontWeight: FontWeight.bold),
                     onChanged: (String? newValue) {
                       if (newValue != null) {
                         setState(() {
@@ -807,11 +889,15 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
           ),
 
           const SizedBox(height: 15),
-          Row(
-            children: [
-              _filterTab("All"),
-              _filterTab("Request"),
-            ],
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _filterTab("All"),
+                _filterTab("Request"),
+                _filterTab("Ditolak"),
+              ],
+            ),
           ),
           const SizedBox(height: 15),
           Expanded(
@@ -852,6 +938,8 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                   bool matchesFilter = true;
                   if (selectedFilter == "Request") {
                     matchesFilter = item["catatanUser"] != null && item["catatanUser"].toString().isNotEmpty;
+                  } else if (selectedFilter == "Ditolak") {
+                    matchesFilter = item["rejectionReason"] != null && item["userApprovalStatus"] != "approved";
                   }
                   
                   bool matchesDate = true;
@@ -889,7 +977,8 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                     var item = doc.data() as Map<String, dynamic>;
                     item["id"] = doc.id;
                     bool hasNote = item["catatanUser"] != null;
-                    bool isRejected = item["userApprovalStatus"] == "rejected";
+                    bool isRejected = item["rejectionReason"] != null && item["userApprovalStatus"] != "approved";
+                    bool isWaitingUser = item["userApprovalStatus"] == "pending" && item["isUpdatedByAdmin"] == true && isRejected;
                     Color katColor = _getKategoriColor(item["kategori"]);
 
                     return InkWell(
@@ -949,9 +1038,9 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                                           BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2))
                                         ],
                                       ),
-                                      child: const Text(
-                                        "DITOLAK USER", 
-                                        style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)
+                                      child: Text(
+                                        isWaitingUser ? "MENUNGGU USER" : "DITOLAK USER", 
+                                        style: const TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)
                                       ),
                                     )
                                   else if (hasNote)
@@ -1072,6 +1161,7 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
     bool active = selectedFilter == title;
     Color tabColor = const Color(0xFF427AB5);
     if (title == "Request") tabColor = const Color(0xFF4F46E5);
+    if (title == "Ditolak") tabColor = Colors.red.shade600;
 
     return GestureDetector(
       onTap: () => setState(() => selectedFilter = title),

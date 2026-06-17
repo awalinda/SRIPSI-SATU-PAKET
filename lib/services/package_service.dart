@@ -115,6 +115,24 @@ class PackageService {
     return _firestore.collection('packages_admin').snapshots();
   }
 
+  // 🔥 UPDATE INCOMING PACKAGE (Admin)
+  Future<void> updateIncomingPackage(String adminDocId, String? userUid, String resi, Map<String, dynamic> data) async {
+    final batch = _firestore.batch();
+    
+    // Update admin collection
+    batch.update(_firestore.collection('packages_admin').doc(adminDocId), data);
+
+    // Update user collection if userUid is provided
+    if (userUid != null) {
+      final userPkgs = await _firestore.collection('user').doc(userUid).collection('packages').where('resi', isEqualTo: resi).get();
+      for (var doc in userPkgs.docs) {
+        batch.update(doc.reference, data);
+      }
+    }
+    
+    await batch.commit();
+  }
+
   // 🔥 SEND PACKAGE NOTE (User)
   Future<void> sendPackageNote(String uid, String packageId, String resi, String note) async {
     final batch = _firestore.batch();

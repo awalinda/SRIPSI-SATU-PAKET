@@ -2,13 +2,13 @@ import 'package:satupaket/services/order_service.dart';
 import 'package:satupaket/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import '../../widgets/custom_notification.dart';
 
 class KonfirmasiPage extends StatefulWidget {
-  const KonfirmasiPage({super.key});
+  final String filter;
+  const KonfirmasiPage({super.key, this.filter = "Menunggu Konfirmasi"});
 
   @override
   State<KonfirmasiPage> createState() => _KonfirmasiPageState();
@@ -18,11 +18,28 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
   final Set<String> selectedOrders = {};
   bool _isLoading = false;
   String _searchQuery = "";
-  String _selectedFilter = "Semua"; // Filter status
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  String selectedDateFilter = "Semua Waktu";
+  late String selectedStatusFilter;
 
   bool get isMobile => MediaQuery.of(context).size.width < 800;
+
+  @override
+  void initState() {
+    super.initState();
+    selectedStatusFilter = widget.filter;
+  }
+
+  @override
+  void didUpdateWidget(KonfirmasiPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.filter != widget.filter) {
+      setState(() {
+        selectedStatusFilter = widget.filter;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -430,34 +447,6 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
     }
   }
 
-  Widget _filterTab(String label) {
-    bool active = _selectedFilter == label;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedFilter = label),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(right: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? const Color(0xFF427AB5) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: active ? const Color(0xFF427AB5) : Colors.grey.shade300),
-          boxShadow: active
-              ? [BoxShadow(color: const Color(0xFF427AB5).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3))]
-              : [],
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: active ? Colors.white : Colors.grey.shade600,
-            fontWeight: active ? FontWeight.bold : FontWeight.w500,
-            fontSize: 13,
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -490,48 +479,71 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
                 ],
               ),
           const SizedBox(height: 20),
-          // 🔥 SEARCH BAR (Neat & Minimalist)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              width: isMobile ? double.infinity : 300,
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
-                style: const TextStyle(fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: "Cari Nama atau Resi...",
-                  hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
-                  prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF427AB5), size: 18),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+          // 🔥 SEARCH BAR & FILTERS (Neat & Minimalist)
+          Wrap(
+            spacing: 15,
+            runSpacing: 15,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Container(
+                width: isMobile ? double.infinity : 300,
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+                  style: const TextStyle(fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: "Cari Nama atau Resi...",
+                    hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
+                    prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF427AB5), size: 18),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 ),
               ),
-            ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.shade100),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedDateFilter,
+                    dropdownColor: Colors.white,
+                    icon: Icon(Icons.calendar_today, size: 16, color: Colors.blue.shade700),
+                    style: TextStyle(fontSize: 13, color: Colors.blue.shade900, fontWeight: FontWeight.bold),
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          selectedDateFilter = newValue;
+                        });
+                      }
+                    },
+                    items: <String>['Semua Waktu', 'Hari Ini', '3 Hari Terakhir', 'Seminggu Terakhir']
+                        .map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Padding(padding: const EdgeInsets.only(right: 8.0), child: Text(value)),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 15),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _filterTab("Semua"),
-                _filterTab("Menunggu Konfirmasi"),
-                _filterTab("Diproses"),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 25),
           StreamBuilder<QuerySnapshot>(
             stream: OrderService.getAllOrdersStream(),
             builder: (context, snapshot) {
@@ -549,6 +561,8 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
                 String nama = (data["nama"] ?? "").toString().toLowerCase();
                 String uid = (data["userIdCode"] ?? "").toString().toLowerCase();
                 String tgl = (data["tanggal"] ?? "").toString().toLowerCase();
+                String status = (data["status"] ?? "Menunggu Konfirmasi");
+                
                 // Jika tanggal null, coba ambil dari createdAt
                 if (data["createdAt"] != null && tgl == "") {
                   if (data["createdAt"] is Timestamp) {
@@ -559,9 +573,29 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
                 }
                 
                 bool matchesQuery = nama.contains(_searchQuery) || uid.contains(_searchQuery) || tgl.contains(_searchQuery);
-                bool matchesFilter = _selectedFilter == "Semua" || data["status"] == _selectedFilter;
                 
-                return matchesQuery && matchesFilter;
+                bool matchesStatus = true;
+                if (selectedStatusFilter != "Semua Status") {
+                  matchesStatus = (status == selectedStatusFilter);
+                }
+                
+                bool matchesDate = true;
+                if (selectedDateFilter != "Semua Waktu" && data["createdAt"] != null) {
+                  DateTime createdAt = (data["createdAt"] as Timestamp).toDate();
+                  DateTime now = DateTime.now();
+                  DateTime today = DateTime(now.year, now.month, now.day);
+                  DateTime docDate = DateTime(createdAt.year, createdAt.month, createdAt.day);
+                  
+                  if (selectedDateFilter == "Hari Ini") {
+                    matchesDate = docDate.isAtSameMomentAs(today);
+                  } else if (selectedDateFilter == "3 Hari Terakhir") {
+                    matchesDate = docDate.isAfter(today.subtract(const Duration(days: 3)));
+                  } else if (selectedDateFilter == "Seminggu Terakhir") {
+                    matchesDate = docDate.isAfter(today.subtract(const Duration(days: 7)));
+                  }
+                }
+
+                return matchesQuery && matchesStatus && matchesDate;
               }).toList();
 
               // Urutkan: Menunggu Konfirmasi dulu, baru Diproses
@@ -687,21 +721,15 @@ class _BentoOrderCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _miniPreview(item),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text("TOTAL", style: TextStyle(fontSize: 7, fontWeight: FontWeight.w900, color: Colors.grey.shade400, letterSpacing: 0.5)),
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerRight,
-                            child: Text(
-                              NumberFormat.currency(locale: 'id', symbol: 'Rp', decimalDigits: 0).format(double.tryParse(item["total"].toString()) ?? 0),
-                              style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF10B981), fontSize: 14),
-                            ),
-                          ),
-                        ],
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text("TOTAL", style: TextStyle(fontSize: 7, fontWeight: FontWeight.w900, color: Colors.grey.shade400, letterSpacing: 0.5)),
+                        Text(
+                          "Rp${item["total"] ?? 0}",
+                          style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF10B981), fontSize: 14),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -734,25 +762,12 @@ class _BentoOrderCard extends StatelessWidget {
 
   Widget _miniPreview(Map<String, dynamic> item) {
     List paket = item["paket"] as List? ?? [];
-    String? firstImage;
-    if (paket.isNotEmpty && paket.first["images"] != null && (paket.first["images"] as List).isNotEmpty) {
-      firstImage = (paket.first["images"] as List).first.toString();
-    }
     return Row(
       children: [
         Container(
-          width: 28,
-          height: 28,
+          padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade200)),
-          child: firstImage != null
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.memory(
-                    base64Decode(firstImage),
-                    fit: BoxFit.cover,
-                  ),
-                )
-              : const Icon(Icons.inventory_2_outlined, size: 14, color: Color(0xFF4F46E5)),
+          child: const Icon(Icons.inventory_2_outlined, size: 14, color: Color(0xFF4F46E5)),
         ),
         const SizedBox(width: 8),
         Text("${paket.length} Pkt", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),

@@ -149,4 +149,30 @@ class NotificationService {
       type: "shipping",
     );
   }
+
+  // 🔥 Notify when package data is updated by admin (e.g. after rejection)
+  static Future<void> notifyPackageUpdated(String uid, String resi, String namaBarang) async {
+    final userDoc = await _firestore.collection('user').doc(uid).get();
+    if (!userDoc.exists) return;
+    
+    final email = userDoc.get('email');
+    final name = userDoc.get('name') ?? 'Pengguna';
+
+    // 1. Email
+    if (email != null) {
+      await sendEmailNotification(
+        recipientEmail: email,
+        subject: "🔄 Pembaruan Data Paket - $resi",
+        body: "Halo $name,\n\nData paket Anda ($namaBarang) dengan resi $resi telah diperbarui oleh admin. Silakan periksa kembali dan lakukan konfirmasi (Terima/Tolak).",
+      );
+    }
+
+    // 2. Internal
+    await sendInternalNotification(
+      uid: uid,
+      title: "Pembaruan Data Paket",
+      body: "Data paket $namaBarang ($resi) telah diperbarui admin. Silakan konfirmasi.",
+      type: "package",
+    );
+  }
 }

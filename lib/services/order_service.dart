@@ -39,6 +39,21 @@ class OrderService {
         "isUpdatedByAdmin": true,
       });
 
+      if (status == "Selesai") {
+        // Sync ke pengiriman
+        final doc = await _firestore.collection('orders').doc(orderId).get();
+        if (doc.exists) {
+          final data = doc.data() as Map<String, dynamic>;
+          String resiOrder = data["resi"] ?? "";
+          if (resiOrder.isNotEmpty) {
+             final pengirimanQuery = await _firestore.collection('pengiriman').where('resiAsal', isEqualTo: resiOrder).get();
+             for (var p in pengirimanQuery.docs) {
+               await p.reference.update({"status": "Selesai"});
+             }
+          }
+        }
+      }
+
       // 🔥 TRIGGER NOTIFICATION
       if (status == "Disetujui") {
         final doc = await _firestore.collection('orders').doc(orderId).get();
@@ -60,6 +75,7 @@ class OrderService {
         "status": status,
         "resiPengiriman": resiPengiriman,
         "isUpdatedByAdmin": true,
+        "dikirimAt": FieldValue.serverTimestamp(),
       });
     } catch (e) {
       print("Error updating order and resi: $e");
@@ -85,6 +101,29 @@ class OrderService {
     } catch (e) {
       print("Error creating pengiriman: $e");
       rethrow;
+    }
+  }
+
+  // 🔥 Auto Selesai Setelah 3 Hari
+  static Future<void> checkAndAutoUpdateSelesai() async {
+    try {
+      final now = DateTime.now();
+      final orders = await _firestore.collection('orders').where('status', isEqualTo: 'Dikirim').get();
+      for (var doc in orders.docs) {
+        final data = doc.data();
+        DateTime dateToCheck = now;
+        if (data.containsKey('dikirimAt') && data['dikirimAt'] != null) {
+          dateToCheck = (data['dikirimAt'] as Timestamp).toDate();
+        } else if (data['createdAt'] != null) {
+          dateToCheck = (data['createdAt'] as Timestamp).toDate();
+        }
+
+        if (now.difference(dateToCheck).inDays >= 3) {
+           await updateOrderStatus(doc.id, "Selesai");
+        }
+      }
+    } catch (e) {
+      print("Auto-update failed: $e");
     }
   }
 
@@ -121,5 +160,37 @@ class OrderService {
     if (beratBulat < 1) beratBulat = 1; // Minimal 1 kg
     
     return beratBulat * tarifPerKg;
+  }
+
+  // 🔥 Submit Ulasan
+  static Future<void> submitReview(String orderId, double rating, String reviewText, {String? reviewImageBase64}) async {
+    try {
+      Map<String, dynamic> updateData = {
+        "rating": rating,
+        "reviewText": reviewText,
+        "reviewDate": FieldValue.serverTimestamp(),
+      };
+      if (reviewImageBase64 != null) {
+        updateData["reviewImageBase64"] = reviewImageBase64;
+      }
+
+      await _firestore.collection('orders').doc(orderId).update(updateData);
+
+      // Sync ke pengiriman agar admin bisa melihat
+      final doc = await _firestore.collection('orders').doc(orderId).get();
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        String resiOrder = data["resi"] ?? "";
+        if (resiOrder.isNotEmpty) {
+           final pengirimanQuery = await _firestore.collection('pengiriman').where('resiAsal', isEqualTo: resiOrder).get();
+           for (var p in pengirimanQuery.docs) {
+             await p.reference.update(updateData);
+           }
+        }
+      }
+    } catch (e) {
+      print("Error submitting review: $e");
+      rethrow;
+    }
   }
 }

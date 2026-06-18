@@ -15,6 +15,8 @@ import 'alamat_toko_page.dart';
 import 'privasi_page.dart';
 import 'pesan_page.dart';
 import 'profil_page.dart';
+import 'manajemen_layanan_page.dart';
+import 'ulasan_page.dart';
 import '../../widgets/custom_notification.dart';
 
 class DashboardAdmin extends StatefulWidget {
@@ -26,9 +28,17 @@ class DashboardAdmin extends StatefulWidget {
 
 class _DashboardAdminState extends State<DashboardAdmin> {
   int selectedIndex = 0;
+  bool isBarangMasukExpanded = false;
+  String _barangMasukFilter = "All";
+  bool isKonfirmasiExpanded = false;
+  String _konfirmasiFilter = "Menunggu Konfirmasi";
+  bool isBarangKeluarExpanded = false;
+  String _barangKeluarFilter = "Diantar";
   final PackageService _packageService = PackageService();
   StreamSubscription? _adminEventSub;
   final DateTime _sessionStartTime = DateTime.now();
+  final ScrollController _sidebarScrollController = ScrollController();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   late Stream<QuerySnapshot> _packagesStream;
   late Stream<QuerySnapshot> _pengirimanStream;
@@ -52,6 +62,7 @@ class _DashboardAdminState extends State<DashboardAdmin> {
   @override
   void dispose() {
     _adminEventSub?.cancel();
+    _sidebarScrollController.dispose();
     super.dispose();
   }
 
@@ -179,7 +190,7 @@ class _DashboardAdminState extends State<DashboardAdmin> {
   Widget build(BuildContext context) {
 
     return Scaffold(
-      key: GlobalKey<ScaffoldState>(),
+      key: _scaffoldKey,
       appBar: isMobile
           ? AppBar(
               backgroundColor: const Color(0xFF427AB5),
@@ -305,6 +316,7 @@ class _DashboardAdminState extends State<DashboardAdmin> {
 
           Expanded(
             child: ListView(
+              controller: _sidebarScrollController,
               padding: const EdgeInsets.symmetric(horizontal: 15),
               children: [
                 const Padding(
@@ -312,9 +324,9 @@ class _DashboardAdminState extends State<DashboardAdmin> {
                   child: Text("OPERASIONAL", style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1)),
                 ),
                 _menuItem(Icons.dashboard_outlined, "Dashboard", 0),
-                _menuItem(Icons.inventory_outlined, "Barang Masuk", 1),
-                _menuItem(Icons.check_circle_outline, "Konfirmasi Pesanan", 2),
-                _menuItem(Icons.local_shipping_outlined, "Barang Keluar", 3),
+                _expandableBarangMasuk(),
+                _expandableKonfirmasiPesanan(),
+                _expandableBarangKeluar(),
 
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 12, vertical: 15),
@@ -322,13 +334,15 @@ class _DashboardAdminState extends State<DashboardAdmin> {
                 ),
                 _menuItem(Icons.attach_money_outlined, "Manajemen Biaya", 4),
                 _menuItem(Icons.store_outlined, "Alamat Toko", 5),
+                _menuItem(Icons.room_service_outlined, "Manajemen Layanan", 6),
+                _menuItem(Icons.star_outline_rounded, "Ulasan", 7),
 
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 12, vertical: 15),
                   child: Text("LAINNYA", style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1)),
                 ),
-                _menuItem(Icons.message_outlined, "Pesan", 6),
-                _menuItem(Icons.privacy_tip_outlined, "Info Privasi", 7),
+                _menuItem(Icons.message_outlined, "Pesan", 8),
+                _menuItem(Icons.privacy_tip_outlined, "Info Privasi", 9),
               ],
             ),
           ),
@@ -339,7 +353,7 @@ class _DashboardAdminState extends State<DashboardAdmin> {
             padding: const EdgeInsets.all(20),
             child: InkWell(
               onTap: () {
-                setState(() => selectedIndex = 8);
+                setState(() => selectedIndex = 10);
                 if (isMobile) Navigator.pop(context);
               },
               borderRadius: BorderRadius.circular(15),
@@ -379,14 +393,16 @@ class _DashboardAdminState extends State<DashboardAdmin> {
       index: selectedIndex,
       children: [
         _dashboardContent(), // 0
-        const BarangMasukPage(), // 1
-        const KonfirmasiPage(), // 2
-        const BarangKeluarPage(), // 3
+        BarangMasukPage(filter: _barangMasukFilter), // 1
+        KonfirmasiPage(filter: _konfirmasiFilter), // 2
+        BarangKeluarPage(filter: _barangKeluarFilter), // 3
         BiayaPage(), // 4
         const AlamatTokoPage(), // 5
-        const PesanPage(), // 6
-        const PrivasiPage(), // 7
-        const ProfilPage(), // 8
+        const ManajemenLayananPage(), // 6
+        const UlasanPage(), // 7
+        const PesanPage(), // 8
+        const PrivasiPage(), // 9
+        const ProfilPage(), // 10
       ],
     );
   }
@@ -489,6 +505,499 @@ class _DashboardAdminState extends State<DashboardAdmin> {
           ),
         );
       },
+    );
+  }
+
+  // ================= EXPANDABLE MENU (BARANG MASUK) =================
+  Widget _expandableBarangMasuk() {
+    bool isAnyChildActive = selectedIndex == 1;
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: _packageService.getAdminPackagesStream(),
+      builder: (context, snapshot) {
+        int badgeCountRequest = 0;
+        int badgeCountDitolak = 0;
+        
+        if (snapshot.hasData) {
+          final docs = snapshot.data!.docs;
+          badgeCountRequest = docs.where((doc) {
+            var data = doc.data() as Map<String, dynamic>;
+            return data["catatanUser"] != null;
+          }).length;
+          
+          badgeCountDitolak = docs.where((doc) {
+            var data = doc.data() as Map<String, dynamic>;
+            return data["rejectionReason"] != null && data["userApprovalStatus"] != "approved";
+          }).length;
+        }
+
+        int totalBadgeCount = badgeCountRequest + badgeCountDitolak;
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    isBarangMasukExpanded = !isBarangMasukExpanded;
+                  });
+                },
+                borderRadius: BorderRadius.circular(15),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
+                  decoration: BoxDecoration(
+                    color: isAnyChildActive && !isBarangMasukExpanded ? Colors.white.withOpacity(0.15) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(15),
+                    border: isAnyChildActive
+                      ? Border.all(color: Colors.white.withOpacity(0.2))
+                      : Border.all(color: Colors.transparent),
+                  ),
+                  child: Row(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        width: isAnyChildActive ? 4 : 0,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      SizedBox(width: isAnyChildActive ? 12 : 0),
+                      
+                      Icon(
+                        Icons.inventory_outlined,
+                        color: isAnyChildActive ? Colors.white : Colors.white70,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: Text(
+                          "Barang Masuk",
+                          style: TextStyle(
+                            color: isAnyChildActive ? Colors.white : Colors.white70,
+                            fontWeight: isAnyChildActive ? FontWeight.bold : FontWeight.w500,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      if (totalBadgeCount > 0 && !isBarangMasukExpanded)
+                        Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(10)),
+                          child: Text(totalBadgeCount.toString(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        ),
+                      Icon(
+                        isBarangMasukExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                        color: isAnyChildActive ? Colors.white : Colors.white70,
+                        size: 20,
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            if (isBarangMasukExpanded)
+              Padding(
+                padding: const EdgeInsets.only(left: 35, bottom: 8),
+                child: Column(
+                  children: [
+                    _subMenuItem("Semua Barang Masuk", "All", 0),
+                    _subMenuItem("Request", "Request", badgeCountRequest),
+                    _subMenuItem("Ditolak", "Ditolak", badgeCountDitolak),
+                  ],
+                ),
+              )
+          ],
+        );
+      }
+    );
+  }
+
+  // ================= EXPANDABLE MENU (KONFIRMASI PESANAN) =================
+  Widget _expandableKonfirmasiPesanan() {
+    bool isAnyChildActive = selectedIndex == 2;
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: OrderService.getAllOrdersStream(),
+      builder: (context, snapshot) {
+        int badgeMenunggu = 0;
+        int badgeDiproses = 0;
+        
+        if (snapshot.hasData) {
+          final docs = snapshot.data!.docs;
+          badgeMenunggu = docs.where((doc) {
+            final s = (doc.data() as Map<String, dynamic>)["status"];
+            return s == "Menunggu Konfirmasi";
+          }).length;
+          
+          badgeDiproses = docs.where((doc) {
+            final s = (doc.data() as Map<String, dynamic>)["status"];
+            return s == "Diproses";
+          }).length;
+        }
+
+        int totalBadgeCount = badgeMenunggu + badgeDiproses;
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    isKonfirmasiExpanded = !isKonfirmasiExpanded;
+                  });
+                },
+                borderRadius: BorderRadius.circular(15),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
+                  decoration: BoxDecoration(
+                    color: isAnyChildActive && !isKonfirmasiExpanded ? Colors.white.withOpacity(0.15) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(15),
+                    border: isAnyChildActive
+                      ? Border.all(color: Colors.white.withOpacity(0.2))
+                      : Border.all(color: Colors.transparent),
+                  ),
+                  child: Row(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        width: isAnyChildActive ? 4 : 0,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      SizedBox(width: isAnyChildActive ? 12 : 0),
+                      
+                      Icon(
+                        Icons.pending_actions_rounded,
+                        color: isAnyChildActive ? Colors.white : Colors.white70,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: Text(
+                          "Konfirmasi Pesanan",
+                          style: TextStyle(
+                            color: isAnyChildActive ? Colors.white : Colors.white70,
+                            fontWeight: isAnyChildActive ? FontWeight.bold : FontWeight.w500,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      if (totalBadgeCount > 0 && !isKonfirmasiExpanded)
+                        Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(10)),
+                          child: Text(totalBadgeCount.toString(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        ),
+                      Icon(
+                        isKonfirmasiExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                        color: isAnyChildActive ? Colors.white : Colors.white70,
+                        size: 20,
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            if (isKonfirmasiExpanded)
+              Padding(
+                padding: const EdgeInsets.only(left: 35, bottom: 8),
+                child: Column(
+                  children: [
+                    _subMenuItemKonfirmasi("Menunggu Konfirmasi", "Menunggu Konfirmasi", badgeMenunggu),
+                    _subMenuItemKonfirmasi("Diproses", "Diproses", badgeDiproses),
+                  ],
+                ),
+              ),
+          ],
+        );
+      }
+    );
+  }
+
+  // ================= EXPANDABLE MENU (BARANG KELUAR) =================
+  Widget _expandableBarangKeluar() {
+    bool isAnyChildActive = selectedIndex == 3;
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: OrderService.getPengirimanStream(),
+      builder: (context, snapshot) {
+        int badgeDiantar = 0;
+        int badgeSelesai = 0;
+        
+        if (snapshot.hasData) {
+          final docs = snapshot.data!.docs;
+          badgeDiantar = docs.where((doc) {
+            final s = (doc.data() as Map<String, dynamic>)["status"];
+            return s != "Selesai";
+          }).length;
+          
+          badgeSelesai = docs.where((doc) {
+            final s = (doc.data() as Map<String, dynamic>)["status"];
+            return s == "Selesai";
+          }).length;
+        }
+
+        int totalBadgeCount = badgeDiantar; // Biasanya tidak perlu alert banyak untuk yg selesai, prioritas diantar
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    isBarangKeluarExpanded = !isBarangKeluarExpanded;
+                  });
+                },
+                borderRadius: BorderRadius.circular(15),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
+                  decoration: BoxDecoration(
+                    color: isAnyChildActive && !isBarangKeluarExpanded ? Colors.white.withOpacity(0.15) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(15),
+                    border: isAnyChildActive
+                      ? Border.all(color: Colors.white.withOpacity(0.2))
+                      : Border.all(color: Colors.transparent),
+                  ),
+                  child: Row(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        width: isAnyChildActive ? 4 : 0,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      SizedBox(width: isAnyChildActive ? 12 : 0),
+                      
+                      Icon(
+                        Icons.local_shipping,
+                        color: isAnyChildActive ? Colors.white : Colors.white70,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: Text(
+                          "Barang Keluar",
+                          style: TextStyle(
+                            color: isAnyChildActive ? Colors.white : Colors.white70,
+                            fontWeight: isAnyChildActive ? FontWeight.bold : FontWeight.w500,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      if (totalBadgeCount > 0 && !isBarangKeluarExpanded)
+                        Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(10)),
+                          child: Text(totalBadgeCount.toString(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        ),
+                      Icon(
+                        isBarangKeluarExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                        color: isAnyChildActive ? Colors.white : Colors.white70,
+                        size: 20,
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            if (isBarangKeluarExpanded)
+              Padding(
+                padding: const EdgeInsets.only(left: 35, bottom: 8),
+                child: Column(
+                  children: [
+                    _subMenuItemBarangKeluar("Diantar", "Diantar", badgeDiantar),
+                    _subMenuItemBarangKeluar("Selesai", "Selesai", badgeSelesai),
+                  ],
+                ),
+              ),
+          ],
+        );
+      }
+    );
+  }
+
+  Widget _subMenuItem(String title, String filter, int badgeCount) {
+    bool active = selectedIndex == 1 && _barangMasukFilter == filter;
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            selectedIndex = 1;
+            _barangMasukFilter = filter;
+          });
+          if (isMobile) {
+            Navigator.pop(context);
+          }
+        },
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+          decoration: BoxDecoration(
+            color: active ? Colors.white.withOpacity(0.1) : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: active ? Colors.white : Colors.white38,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: active ? Colors.white : Colors.white70,
+                    fontSize: 13,
+                    fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ),
+              if (badgeCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(10)),
+                  child: Text(badgeCount.toString(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _subMenuItemKonfirmasi(String title, String filter, int badgeCount) {
+    bool active = selectedIndex == 2 && _konfirmasiFilter == filter;
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            selectedIndex = 2;
+            _konfirmasiFilter = filter;
+          });
+          if (isMobile) {
+            Navigator.pop(context);
+          }
+        },
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+          decoration: BoxDecoration(
+            color: active ? Colors.white.withOpacity(0.1) : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: active ? Colors.white : Colors.white38,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: active ? Colors.white : Colors.white70,
+                    fontSize: 13,
+                    fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ),
+              if (badgeCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(10)),
+                  child: Text(badgeCount.toString(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _subMenuItemBarangKeluar(String title, String filter, int badgeCount) {
+    bool active = selectedIndex == 3 && _barangKeluarFilter == filter;
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            selectedIndex = 3;
+            _barangKeluarFilter = filter;
+          });
+          if (isMobile) {
+            Navigator.pop(context);
+          }
+        },
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+          decoration: BoxDecoration(
+            color: active ? Colors.white.withOpacity(0.1) : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: active ? Colors.white : Colors.white38,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: active ? Colors.white : Colors.white70,
+                    fontSize: 13,
+                    fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ),
+              if (badgeCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(10)),
+                  child: Text(badgeCount.toString(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -625,11 +1134,11 @@ class _DashboardAdminState extends State<DashboardAdmin> {
                                     crossAxisSpacing: 12,
                                     childAspectRatio: 1.4, // Changed from 2.1 to make cards taller
                                     children: [
-                                      _card(countMenunggu.toString(), "Menunggu ACC", Icons.pending_actions_rounded, Colors.orange, isExpanded: false, onTap: () => setState(() => selectedIndex = 2)),
-                                      _card(countDiproses.toString(), "Sedang Diproses", Icons.sync_rounded, const Color(0xFF427AB5), isExpanded: false, onTap: () => setState(() => selectedIndex = 2)),
-                                      _card(requestCatatan.toString(), "Request Catatan", Icons.note_alt_rounded, Colors.purple, isExpanded: false, onTap: () => setState(() => selectedIndex = 1)),
-                                      _card(totalMasuk.toString(), "Barang Masuk", Icons.inventory_2, Colors.blue, isExpanded: false, onTap: () => setState(() => selectedIndex = 1)),
-                                      _card(totalKeluar.toString(), "Barang Keluar", Icons.local_shipping, Colors.orange, isExpanded: false, onTap: () => setState(() => selectedIndex = 3)),
+                                      _card(countMenunggu.toString(), "Menunggu ACC", Icons.pending_actions_rounded, Colors.orange, isExpanded: false, onTap: () => setState(() { selectedIndex = 2; _konfirmasiFilter = "Menunggu Konfirmasi"; isKonfirmasiExpanded = true; })),
+                                      _card(countDiproses.toString(), "Sedang Diproses", Icons.sync_rounded, const Color(0xFF427AB5), isExpanded: false, onTap: () => setState(() { selectedIndex = 2; _konfirmasiFilter = "Diproses"; isKonfirmasiExpanded = true; })),
+                                      _card(requestCatatan.toString(), "Request Catatan", Icons.note_alt_rounded, Colors.purple, isExpanded: false, onTap: () => setState(() { selectedIndex = 1; _barangMasukFilter = "Request"; isBarangMasukExpanded = true; })),
+                                      _card(totalMasuk.toString(), "Barang Masuk", Icons.inventory_2, Colors.blue, isExpanded: false, onTap: () => setState(() { selectedIndex = 1; _barangMasukFilter = "All"; isBarangMasukExpanded = true; })),
+                                      _card(totalKeluar.toString(), "Barang Keluar", Icons.local_shipping, Colors.orange, isExpanded: false, onTap: () => setState(() { selectedIndex = 3; _barangKeluarFilter = "Semua Status"; isBarangKeluarExpanded = true; })),
                                       _card(totalStok.toString(), "Total Stok", Icons.storage, totalStok < 0 ? Colors.red : Colors.green, isExpanded: false),
                                     ],
                                   )
@@ -637,16 +1146,16 @@ class _DashboardAdminState extends State<DashboardAdmin> {
                                     children: [
                                       Row(
                                         children: [
-                                          _card(countMenunggu.toString(), "Menunggu ACC", Icons.pending_actions_rounded, Colors.orange, onTap: () => setState(() => selectedIndex = 2)),
-                                          _card(countDiproses.toString(), "Sedang Diproses", Icons.sync_rounded, const Color(0xFF427AB5), onTap: () => setState(() => selectedIndex = 2)),
-                                          _card(requestCatatan.toString(), "Request Catatan", Icons.note_alt_rounded, Colors.purple, onTap: () => setState(() => selectedIndex = 1)),
+                                          _card(countMenunggu.toString(), "Menunggu ACC", Icons.pending_actions_rounded, Colors.orange, onTap: () => setState(() { selectedIndex = 2; _konfirmasiFilter = "Menunggu Konfirmasi"; isKonfirmasiExpanded = true; })),
+                                          _card(countDiproses.toString(), "Sedang Diproses", Icons.sync_rounded, const Color(0xFF427AB5), onTap: () => setState(() { selectedIndex = 2; _konfirmasiFilter = "Diproses"; isKonfirmasiExpanded = true; })),
+                                          _card(requestCatatan.toString(), "Request Catatan", Icons.note_alt_rounded, Colors.purple, onTap: () => setState(() { selectedIndex = 1; _barangMasukFilter = "Request"; isBarangMasukExpanded = true; })),
                                         ],
                                       ),
                                       const SizedBox(height: 12),
                                       Row(
                                         children: [
-                                          _card(totalMasuk.toString(), "Barang Masuk", Icons.inventory_2, Colors.blue, onTap: () => setState(() => selectedIndex = 1)),
-                                          _card(totalKeluar.toString(), "Barang Keluar", Icons.local_shipping, Colors.orange, onTap: () => setState(() => selectedIndex = 3)),
+                                          _card(totalMasuk.toString(), "Barang Masuk", Icons.inventory_2, Colors.blue, onTap: () => setState(() { selectedIndex = 1; _barangMasukFilter = "All"; isBarangMasukExpanded = true; })),
+                                          _card(totalKeluar.toString(), "Barang Keluar", Icons.local_shipping, Colors.orange, onTap: () => setState(() { selectedIndex = 3; _barangKeluarFilter = "Semua Status"; isBarangKeluarExpanded = true; })),
                                           _card(totalStok.toString(), "Total Stok", Icons.storage, totalStok < 0 ? Colors.red : Colors.green),
                                         ],
                                       ),

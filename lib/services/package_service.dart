@@ -1,4 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'notification_service.dart';
 
 class PackageService {
@@ -111,6 +115,24 @@ class PackageService {
     return _firestore.collection('packages_admin').snapshots();
   }
 
+  // 🔥 UPDATE INCOMING PACKAGE (Admin)
+  Future<void> updateIncomingPackage(String adminDocId, String? userUid, String resi, Map<String, dynamic> data) async {
+    final batch = _firestore.batch();
+    
+    // Update admin collection
+    batch.update(_firestore.collection('packages_admin').doc(adminDocId), data);
+
+    // Update user collection if userUid is provided
+    if (userUid != null) {
+      final userPkgs = await _firestore.collection('user').doc(userUid).collection('packages').where('resi', isEqualTo: resi).get();
+      for (var doc in userPkgs.docs) {
+        batch.update(doc.reference, data);
+      }
+    }
+    
+    await batch.commit();
+  }
+
   // 🔥 SEND PACKAGE NOTE (User)
   Future<void> sendPackageNote(String uid, String packageId, String resi, String note) async {
     final batch = _firestore.batch();
@@ -134,7 +156,7 @@ class PackageService {
   }
 
   // 🔥 UPDATE PACKAGE IMAGES (Admin)
-  Future<void> updatePackageImages(String resi, String? uid, List<String> initialImages, {List<String>? requestedImages, bool isFulfillingRequest = false}) async {
+  Future<void> updatePackageImages(String resi, String? uid, List<String> initialImages, {List<String>? requestedImages, String? requestedVideoUrl, bool isFulfillingRequest = false}) async {
     final batch = _firestore.batch();
     
     final adminPkgs = await _firestore.collection('packages_admin')
@@ -148,8 +170,9 @@ class PackageService {
         "images": initialImages, 
       };
 
-      if (isFulfillingRequest && requestedImages != null) {
-        updateData["requestedImages"] = requestedImages;
+      if (isFulfillingRequest && (requestedImages != null || requestedVideoUrl != null)) {
+        if (requestedImages != null) updateData["requestedImages"] = requestedImages;
+        if (requestedVideoUrl != null) updateData["requestedVideoUrl"] = requestedVideoUrl;
         updateData["catatanUser"] = FieldValue.delete();
       }
 
@@ -164,8 +187,9 @@ class PackageService {
           "isUpdatedByAdmin": true
         };
 
-        if (isFulfillingRequest && requestedImages != null) {
-          updateData["requestedImages"] = requestedImages;
+        if (isFulfillingRequest && (requestedImages != null || requestedVideoUrl != null)) {
+          if (requestedImages != null) updateData["requestedImages"] = requestedImages;
+          if (requestedVideoUrl != null) updateData["requestedVideoUrl"] = requestedVideoUrl;
           updateData["catatanUser"] = FieldValue.delete();
         }
 
@@ -184,5 +208,71 @@ class PackageService {
         .collection('packages')
         .doc(packageId)
         .update({"isUpdatedByAdmin": FieldValue.delete()});
+  }
+
+  // 🔥 UPLOAD VIDEO
+  Future<String?> uploadVideoToStorage(XFile videoFile) async {
+    try {
+      String fileName = 'packages/videos/vid_${DateTime.now().millisecondsSinceEpoch}.mp4';
+      Reference ref = FirebaseStorage.instance.ref().child(fileName);
+      
+      if (kIsWeb) {
+        final bytes = await videoFile.readAsBytes();
+        SettableMetadata metadata = SettableMetadata(contentType: 'video/mp4');
+        UploadTask uploadTask = ref.putData(bytes, metadata);
+        TaskSnapshot snapshot = await uploadTask;
+        return await snapshot.ref.getDownloadURL();
+      } else {
+        File file = File(videoFile.path);
+        UploadTask uploadTask = ref.putFile(file);
+        TaskSnapshot snapshot = await uploadTask;
+        return await snapshot.ref.getDownloadURL();
+      }
+    } catch (e) {
+      print("Error uploading video: $e");
+      return null;
+    }
+  }
+  // 🔥 UPDATE USER APPROVAL STATUS (User)
+  Future<void> updateUserApprovalStatus(String uid, String packageId, String resi, String status, {String? reason}) async {
+    final batch = _firestore.batch();
+    
+    Map<String, dynamic> updateData = {"userApprovalStatus": status};
+    if (reason != null) updateData["rejectionReason"] = reason;
+
+    // Update the user's package document
+    DocumentReference userPkgRef = _firestore.collection('user').doc(uid).collection('packages').doc(packageId);
+    batch.update(userPkgRef, updateData);
+
+    // Update all matching admin documents
+    final adminPkgs = await _firestore.collection('packages_admin')
+        .where('resi', isEqualTo: resi)
+        .where('userId', isEqualTo: uid)
+        .get();
+        
+    for (var doc in adminPkgs.docs) {
+      batch.update(doc.reference, updateData);
+    }
+
+    await batch.commit();
+  }
+
+  // 🔥 DELETE PACKAGE BY ADMIN (Admin)
+  Future<void> deletePackageByAdmin(String adminDocId, String resi, String? uid) async {
+    final batch = _firestore.batch();
+    
+    // Delete from packages_admin collection
+    DocumentReference adminPkgRef = _firestore.collection('packages_admin').doc(adminDocId);
+    batch.delete(adminPkgRef);
+
+    // Delete from user's collection if user is specified
+    if (uid != null) {
+      final userPkgs = await _firestore.collection('user').doc(uid).collection('packages').where('resi', isEqualTo: resi).get();
+      for (var doc in userPkgs.docs) {
+        batch.delete(doc.reference);
+      }
+    }
+
+    await batch.commit();
   }
 }

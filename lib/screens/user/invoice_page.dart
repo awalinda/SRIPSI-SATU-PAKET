@@ -2,39 +2,26 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 
 class InvoicePage extends StatelessWidget {
-  final Map<String, dynamic> orderData;
+  final List<dynamic> paket;
+  final String tipe;
+  final int total;
+  final double? rating;
+  final String? reviewText;
+  final String? reviewImageBase64;
 
   const InvoicePage({
     super.key,
-    required this.orderData,
+    required this.paket,
+    required this.tipe,
+    required this.total,
+    this.rating,
+    this.reviewText,
+    this.reviewImageBase64,
   });
 
   @override
   Widget build(BuildContext context) {
     String formatHarga(int harga) => "Rp${harga.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}";
-    
-    List<dynamic> paket = orderData["paket"] ?? [];
-    String tipe = orderData["tipe"] ?? "antar";
-    int total = (orderData["total"] ?? 0).toInt();
-    String status = orderData["status"] ?? "Menunggu Konfirmasi";
-    String resi = orderData["resi"] ?? "-";
-    String pembayaran = orderData["pembayaran"] ?? "Transfer";
-    String kurir = orderData["pengiriman"] ?? "-";
-
-    // Format Alamat
-    dynamic rawAlamat = orderData["alamatTujuan"] ?? orderData["alamat"] ?? "-";
-    String finalAlamat = "-";
-    if (rawAlamat is Map) {
-      finalAlamat = "${rawAlamat['namaLengkap'] ?? ''}, ${rawAlamat['telepon'] ?? ''}\n${rawAlamat['detail'] ?? ''}, ${rawAlamat['desa'] ?? ''}, ${rawAlamat['kecamatan'] ?? ''}, ${rawAlamat['kabupaten'] ?? ''}, ${rawAlamat['provinsi'] ?? ''} ${rawAlamat['kodePos'] ?? ''}";
-    } else if (rawAlamat is String) {
-      finalAlamat = rawAlamat;
-    }
-
-    // Warna status
-    Color statusColor = Colors.blue;
-    if (status == "Selesai") statusColor = Colors.green;
-    if (status == "Ditolak") statusColor = Colors.red;
-    if (status == "Diproses" || status == "Dikirim") statusColor = Colors.orange;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -70,14 +57,12 @@ class InvoicePage extends StatelessWidget {
                       const Text("Status Pesanan", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 12)),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                        child: Text(status.toUpperCase(), style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 10)),
+                        decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                        child: const Text("AKTIF", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 10)),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 15),
-                  _buildInfoRow("Nomor Pesanan (Resi)", resi),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 25),
 
                   // 📦 LIST BARANG
                   const Text("Daftar Barang", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
@@ -86,27 +71,10 @@ class InvoicePage extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 12),
                     child: Row(
                       children: [
-                        Builder(
-                          builder: (context) {
-                            String? firstImage;
-                            if (p["images"] != null && (p["images"] as List).isNotEmpty) {
-                              firstImage = (p["images"] as List).first.toString();
-                            }
-                            return Container(
-                              width: 34,
-                              height: 34,
-                              decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(10)),
-                              child: firstImage != null
-                                  ? ClipRRect(
-                                      borderRadius: BorderRadius.circular(10),
-                                      child: Image.memory(
-                                        base64Decode(firstImage),
-                                        fit: BoxFit.cover,
-                                      ),
-                                    )
-                                  : const Icon(Icons.inventory_2_rounded, color: Color(0xFF427AB5), size: 18),
-                            );
-                          }
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(10)),
+                          child: const Icon(Icons.inventory_2_rounded, color: Color(0xFF427AB5), size: 18),
                         ),
                         const SizedBox(width: 15),
                         Expanded(
@@ -131,8 +99,8 @@ class InvoicePage extends StatelessWidget {
                   const Divider(height: 40),
 
                   // 🚚 INFO PENGIRIMAN
-                  _buildInfoRow("Metode Penerimaan", tipe == "antar" ? "Antar ke Rumah ($kurir)" : "Ambil di Gudang"),
-                  _buildInfoRow("Metode Pembayaran", pembayaran),
+                  _buildInfoRow("Metode Penerimaan", tipe == "antar" ? "Antar ke Rumah" : "Ambil di Gudang"),
+                  _buildInfoRow("Estimasi Tiba", "2 - 4 Hari Kerja"),
                   
                   const SizedBox(height: 20),
                   const Text("Alamat Tujuan", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 12)),
@@ -144,7 +112,9 @@ class InvoicePage extends StatelessWidget {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          finalAlamat,
+                          tipe == "antar" 
+                            ? "Rumah Utama\nJl. Pangeran Antasari No.128, Bandar Lampung"
+                            : "Warehouse SATUPAKET\nJl. Pangeran Antasari No.128, Bandar Lampung",
                           style: TextStyle(color: Colors.grey.shade700, fontSize: 13, height: 1.4),
                         ),
                       ),
@@ -165,6 +135,56 @@ class InvoicePage extends StatelessWidget {
               ),
             ),
 
+            if (rating != null) ...[
+              const SizedBox(height: 20),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(25),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Ulasan Anda", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+                    const SizedBox(height: 15),
+                    Row(
+                      children: List.generate(5, (index) {
+                        return Icon(
+                          index < rating! ? Icons.star_rounded : Icons.star_border_rounded,
+                          color: Colors.amber,
+                          size: 20,
+                        );
+                      }),
+                    ),
+                    if (reviewText != null && reviewText!.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        reviewText!,
+                        style: TextStyle(color: Colors.grey.shade700, fontSize: 13, height: 1.4),
+                      ),
+                    ],
+                    if (reviewImageBase64 != null && reviewImageBase64!.isNotEmpty) ...[
+                      const SizedBox(height: 15),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(15),
+                        child: Image.memory(
+                          base64Decode(reviewImageBase64!),
+                          width: double.infinity,
+                          height: 150,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ]
+                  ],
+                ),
+              ),
+            ],
+
             const SizedBox(height: 30),
 
             // 🔹 BUTTON BACK
@@ -174,11 +194,11 @@ class InvoicePage extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF427AB5).withOpacity(0.1),
+                  backgroundColor: const Color(0xFF1A1A1A),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                   elevation: 0,
                 ),
-                child: const Text("Tutup Detail", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF427AB5))),
+                child: const Text("Tutup Detail", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
               ),
             ),
           ],

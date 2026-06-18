@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
 import '../../services/order_service.dart';
 import '../../services/auth_service.dart';
 import 'invoice_page.dart';
@@ -44,7 +42,7 @@ class RiwayatPage extends StatelessWidget {
 
         final orders = sortedOrders.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
-          return data["status"] == "Selesai";
+          return data["status"] == "Selesai" && data["rating"] != null;
         }).toList();
 
         if (orders.isEmpty) {
@@ -64,7 +62,12 @@ class RiwayatPage extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) => InvoicePage(
-                      orderData: o,
+                      paket: o["paket"] is List ? List<dynamic>.from(o["paket"]) : [],
+                      tipe: o["tipe"]?.toString() ?? "-",
+                      total: (o["total"] ?? 0).toInt(),
+                      rating: (o["rating"] as num?)?.toDouble(),
+                      reviewText: o["reviewText"]?.toString(),
+                      reviewImageBase64: o["reviewImageBase64"]?.toString(),
                     ),
                   ),
                 );
@@ -80,66 +83,14 @@ class RiwayatPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // 📦 ICON
-                    Builder(
-                      builder: (context) {
-                        String? firstImage;
-                        String? resiPaket;
-                        if (o["paket"] != null && (o["paket"] as List).isNotEmpty) {
-                          var firstPaket = (o["paket"] as List).first;
-                          if (firstPaket is Map) {
-                            resiPaket = firstPaket["resi"];
-                            if (firstPaket["images"] != null && (firstPaket["images"] as List).isNotEmpty) {
-                              firstImage = (firstPaket["images"] as List).first.toString();
-                            }
-                          }
-                        }
-
-                        Widget defaultIcon = const Icon(Icons.inventory, size: 35, color: Color(0xFF427AB5));
-
-                        Widget buildContainer(Widget child) {
-                          return Container(
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFEAF4FF),
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: child,
-                          );
-                        }
-
-                        if (firstImage != null) {
-                          return buildContainer(
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(15),
-                              child: Image.memory(base64Decode(firstImage), fit: BoxFit.cover),
-                            ),
-                          );
-                        } else if (resiPaket != null && resiPaket.isNotEmpty) {
-                          return FutureBuilder<QuerySnapshot>(
-                            future: FirebaseFirestore.instance.collection('packages_admin').where('resi', isEqualTo: resiPaket.trim()).limit(1).get(),
-                            builder: (context, snapshot) {
-                              String? fetchedImage;
-                              if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
-                                var data = snapshot.data!.docs.first.data() as Map<String, dynamic>;
-                                if (data["images"] != null && (data["images"] as List).isNotEmpty) {
-                                  fetchedImage = (data["images"] as List).first.toString();
-                                }
-                              }
-                              return buildContainer(
-                                fetchedImage != null
-                                    ? ClipRRect(
-                                        borderRadius: BorderRadius.circular(15),
-                                        child: Image.memory(base64Decode(fetchedImage), fit: BoxFit.cover),
-                                      )
-                                    : defaultIcon,
-                              );
-                            },
-                          );
-                        }
-
-                        return buildContainer(defaultIcon);
-                      }
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEAF4FF),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: const Icon(Icons.inventory, size: 35),
                     ),
                     const SizedBox(width: 20),
                     // 📄 INFO
@@ -179,13 +130,19 @@ class RiwayatPage extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                            NumberFormat.currency(locale: 'id', symbol: 'Rp', decimalDigits: 0).format(double.tryParse(o["total"].toString()) ?? 0),
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                          ),
+                        Text(
+                          "Rp${o["total"]}",
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: List.generate(5, (index) {
+                            return Icon(
+                              index < (o["rating"] as num).toInt() ? Icons.star_rounded : Icons.star_border_rounded,
+                              color: Colors.amber,
+                              size: 16,
+                            );
+                          }),
                         ),
                       ],
                     ),

@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:math';
+import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../services/package_service.dart';
 import '../../services/report_service.dart';
 import '../../services/order_service.dart';
 import '../../widgets/custom_notification.dart';
+import '../../services/notification_service.dart';
 
 class BarangMasukPage extends StatefulWidget {
-  const BarangMasukPage({super.key});
+  final String filter;
+  const BarangMasukPage({super.key, this.filter = "All"});
 
   @override
   State<BarangMasukPage> createState() => _BarangMasukPageState();
@@ -23,10 +25,27 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
   final TextEditingController _searchController = TextEditingController();
   bool _isLoading = false;
   final ReportService _reportService = ReportService();
-  String selectedFilter = "All"; // Untuk filter tabel UI
+  late String selectedFilter; // Untuk filter tabel UI
+  String selectedDateFilter = "Semua Waktu"; // Untuk filter tanggal
   final FocusNode _searchFocusNode = FocusNode();
 
   bool get isMobile => MediaQuery.of(context).size.width < 800;
+
+  @override
+  void initState() {
+    super.initState();
+    selectedFilter = widget.filter;
+  }
+
+  @override
+  void didUpdateWidget(BarangMasukPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.filter != widget.filter) {
+      setState(() {
+        selectedFilter = widget.filter;
+      });
+    }
+  }
 
   // 🔥 DIALOG PILIH LAPORAN
   void _handleCetakLaporan() {
@@ -125,22 +144,36 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
   }
 
   // ================= POPUP INPUT =================
-  void showFormMasuk() {
-    String? selectedUserUid;
-    String? selectedUserName;
-    String? selectedUserIdCode;
+  void showFormMasuk({Map<String, dynamic>? editItem}) {
+    String? selectedUserUid = editItem?["userId"];
+    String? selectedUserName = editItem?["nama"];
+    String? selectedUserIdCode = editItem?["userIdCode"];
     TextEditingController? userFieldCtrl;
 
-    final resi = TextEditingController();
-    final berat = TextEditingController();
-    final panjang = TextEditingController();
-    final lebar = TextEditingController();
-    final tinggi = TextEditingController();
-    final keterangan = TextEditingController();
+    final resi = TextEditingController(text: editItem?["resi"] ?? "");
+    final berat = TextEditingController(text: editItem?["berat"]?.toString() ?? "");
+    
+    // Parse dimensi if editing
+    String pStr = "";
+    String lStr = "";
+    String tStr = "";
+    if (editItem != null && editItem["dimensi"] != null) {
+      List<String> dims = editItem["dimensi"].toString().split("x");
+      if (dims.length == 3) {
+        pStr = dims[0];
+        lStr = dims[1];
+        tStr = dims[2];
+      }
+    }
+    
+    final panjang = TextEditingController(text: pStr);
+    final lebar = TextEditingController(text: lStr);
+    final tinggi = TextEditingController(text: tStr);
+    final keterangan = TextEditingController(text: editItem?["keterangan"] ?? "");
 
-    String kategori = "-";
+    String kategori = editItem?["kategori"] ?? "-";
     DateTime? tanggal = DateTime.now();
-    List<String> base64Images = [];
+    List<String> base64Images = editItem != null ? List<String>.from(editItem["images"] ?? []) : [];
     bool isSaving = false;
 
     showDialog(
@@ -205,9 +238,10 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                     const Text("Input Barang Masuk", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A))),
                     const SizedBox(height: 25),
 
-                    const Text("ID User (Cari SP-XXXXX)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text("ID User (Cari SP-XXXXX) *", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 8),
                     Autocomplete<Map<String, dynamic>>(
+                      initialValue: TextEditingValue(text: editItem != null ? "${editItem['userIdCode'] ?? ''} - ${editItem['nama'] ?? ''}" : ""),
                       displayStringForOption: (option) => "${option['userIdCode'] ?? ''} - ${option['name'] ?? ''}",
                       optionsBuilder: (textEditingValue) async {
                         if (textEditingValue.text.isEmpty) return const Iterable<Map<String, dynamic>>.empty();
@@ -240,8 +274,10 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                         Expanded(
                           child: TextField(
                             controller: resi,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                             decoration: InputDecoration(
-                              labelText: "No Resi",
+                              labelText: "No Resi *",
                               prefixIcon: const Icon(Icons.qr_code_rounded),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
                             ),
@@ -292,12 +328,9 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                       controller: berat,
                       onChanged: (v) => setStateDialog(() {}),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(6), // Max 999,999 gram
-                      ],
+                      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
                       decoration: InputDecoration(
-                        labelText: "Berat (gram)",
+                        labelText: "Berat (gram) *",
                         prefixIcon: const Icon(Icons.monitor_weight_outlined),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
                       ),
@@ -318,20 +351,20 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                     ),
 
                     const SizedBox(height: 15),
-                    const Text("Dimensi Paket (cm)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text("Dimensi Paket (cm) *", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Expanded(child: TextField(controller: panjang, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(4)], onChanged: (v) { cekKategori(); setStateDialog(() {}); }, decoration: const InputDecoration(labelText: "P", border: OutlineInputBorder()))),
+                        Expanded(child: TextField(controller: panjang, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))], onChanged: (v) { cekKategori(); setStateDialog(() {}); }, decoration: const InputDecoration(labelText: "P *", border: OutlineInputBorder()))),
                         const SizedBox(width: 10),
-                        Expanded(child: TextField(controller: lebar, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(4)], onChanged: (v) { cekKategori(); setStateDialog(() {}); }, decoration: const InputDecoration(labelText: "L", border: OutlineInputBorder()))),
+                        Expanded(child: TextField(controller: lebar, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))], onChanged: (v) { cekKategori(); setStateDialog(() {}); }, decoration: const InputDecoration(labelText: "L *", border: OutlineInputBorder()))),
                         const SizedBox(width: 10),
-                        Expanded(child: TextField(controller: tinggi, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(4)], onChanged: (v) { cekKategori(); setStateDialog(() {}); }, decoration: const InputDecoration(labelText: "T", border: OutlineInputBorder()))),
+                        Expanded(child: TextField(controller: tinggi, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))], onChanged: (v) { cekKategori(); setStateDialog(() {}); }, decoration: const InputDecoration(labelText: "T *", border: OutlineInputBorder()))),
                       ],
                     ),
 
                     const SizedBox(height: 20),
-                    const Text("Foto Paket (Maks 3)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text("Foto Paket (Maksimal 3 Foto)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 8),
                     Row(
                       children: [
@@ -374,12 +407,20 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                                 }
 
                                 if (selectedUserUid == null || resi.text.isEmpty || berat.text.isEmpty || panjang.text.isEmpty || lebar.text.isEmpty || tinggi.text.isEmpty || kategori == "-") {
+                                  List<String> missingFields = [];
+                                  if (selectedUserUid == null && (userFieldCtrl == null || userFieldCtrl!.text.isEmpty)) missingFields.add("ID User");
+                                  if (resi.text.isEmpty) missingFields.add("No Resi");
+                                  if (berat.text.isEmpty) missingFields.add("Berat");
+                                  if (panjang.text.isEmpty) missingFields.add("Panjang (P)");
+                                  if (lebar.text.isEmpty) missingFields.add("Lebar (L)");
+                                  if (tinggi.text.isEmpty) missingFields.add("Tinggi (T)");
+
                                   setStateDialog(() => isSaving = false);
                                   showDialog(
                                     context: context, 
                                     builder: (ctx) => AlertDialog(
                                       title: const Text("Validasi Gagal"), 
-                                      content: const Text("Harap lengkapi semua data dan dimensi paket."), 
+                                      content: Text("Harap lengkapi kolom wajib berikut:\n\n- ${missingFields.join('\n- ')}"), 
                                       actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("OK"))]
                                     )
                                   );
@@ -403,26 +444,38 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                                     l: double.tryParse(lebar.text) ?? 0,
                                     t: double.tryParse(tinggi.text) ?? 0,
                                   ),
-                                  "createdAt": FieldValue.serverTimestamp(),
                                 };
 
-                                await _packageService.addIncomingPackage(selectedUserUid!, data);
-                                await _packageService.saveToAdminList(data);
-                                
-                                if (mounted) {
-                                  Navigator.pop(context); // Close the form dialog
-                                  CustomNotification.showSuccess(context, "Barang berhasil disimpan!");
+                                  if (editItem != null) {
+                                    // Set approval status to pending so user can approve, but KEEP rejectionReason
+                                    data["userApprovalStatus"] = "pending";
+                                  data["isUpdatedByAdmin"] = true;
+                                  await _packageService.updateIncomingPackage(editItem["id"], selectedUserUid, resi.text, data);
+                                  
+                                  // Notify user that package was updated
+                                  if (selectedUserUid != null) {
+                                    await NotificationService.notifyPackageUpdated(selectedUserUid!, resi.text, selectedUserName ?? "Barang");
+                                  }
+                                } else {
+                                  data["createdAt"] = FieldValue.serverTimestamp();
+                                  await _packageService.addIncomingPackage(selectedUserUid!, data);
+                                  await _packageService.saveToAdminList(data);
                                 }
-                              } catch (e) {
-                                if (mounted) {
-                                  CustomNotification.showError(context, "Error: $e");
-                                  setStateDialog(() => isSaving = false);
+                                  
+                                  if (mounted) {
+                                    Navigator.pop(context); // Close the form dialog
+                                    CustomNotification.showSuccess(context, editItem != null ? "Barang berhasil diperbarui!" : "Barang berhasil disimpan!");
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    CustomNotification.showError(context, "Error: $e");
+                                    setStateDialog(() => isSaving = false);
+                                  }
                                 }
-                              }
-                            },
-                            child: isSaving 
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                              : const Text("Simpan Data", style: TextStyle(fontWeight: FontWeight.bold)),
+                              },
+                              child: isSaving 
+                                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                : Text(editItem != null ? "Update Data" : "Simpan Data", style: const TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ),
                       ],
@@ -441,6 +494,8 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
   void showFormEdit(Map<String, dynamic> item) {
     List<String> base64Images = List<String>.from(item["images"] ?? []);
     List<String> requestedBase64Images = List<String>.from(item["requestedImages"] ?? []);
+    XFile? selectedVideo;
+    String? existingVideoUrl = item["requestedVideoUrl"];
     bool isSaving = false;
 
     showDialog(
@@ -459,6 +514,16 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
             } catch (e) { debugPrint(e.toString()); }
           }
 
+          Future<void> pickVideo() async {
+            try {
+              final picker = ImagePicker();
+              final vid = await picker.pickVideo(source: ImageSource.gallery);
+              if (vid != null) {
+                setStateDialog(() => selectedVideo = vid);
+              }
+            } catch (e) { debugPrint(e.toString()); }
+          }
+
           return Dialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             child: Container(
@@ -469,6 +534,61 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                   children: [
                     const Text("Detail & Edit Paket", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
                     const SizedBox(height: 15),
+                    
+                    if (item["rejectionReason"] != null && item["userApprovalStatus"] != "approved")
+                      Container(
+                        padding: const EdgeInsets.all(15), 
+                        margin: const EdgeInsets.only(bottom: 20), 
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50, 
+                          borderRadius: BorderRadius.circular(15), 
+                          border: Border.all(color: Colors.red.shade200)
+                        ), 
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start, 
+                          children: [
+                            Row(
+                              children: const [
+                                Icon(Icons.warning_amber_rounded, color: Colors.red), 
+                                SizedBox(width: 8), 
+                                Text("Ditolak oleh User:", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red))
+                              ]
+                            ), 
+                            const SizedBox(height: 8), 
+                            Text(item["rejectionReason"] ?? "Tidak ada alasan", style: const TextStyle(color: Colors.red)),
+                            if (item["userApprovalStatus"] == "rejected") ...[
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.pop(context); // Close showFormEdit
+                                    showFormMasuk(editItem: item); // Open showFormMasuk with prefilled data
+                                  },
+                                  icon: const Icon(Icons.edit_note_rounded, size: 18),
+                                  label: const Text("Setujui & Edit Data", style: TextStyle(fontWeight: FontWeight.bold)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red.shade600,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                ),
+                              )
+                            ] else ...[
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade100,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text("Sudah Diupdate, Menunggu Konfirmasi User", style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.bold)),
+                              )
+                            ]
+                          ]
+                        )
+                      ),
+
                     if (item["catatanUser"] != null)
                       Container(
                         padding: const EdgeInsets.all(15), 
@@ -495,7 +615,7 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                       ),
                     Text("No Resi: ${item["resi"]}", style: const TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 20),
-                    const Text("Foto Paket Awal (Maks 3)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text("Foto Paket Awal (Maksimal 3 Foto)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 8),
                     Row(
                       children: [
@@ -509,7 +629,7 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
 
                     if (item["catatanUser"] != null) ...[
                       const SizedBox(height: 25),
-                      const Text("Foto Permintaan User (Maks 3)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF427AB5))),
+                      const Text("Foto Permintaan User (Maksimal 3 Foto)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF427AB5))),
                       const SizedBox(height: 8),
                       Row(
                         children: [
@@ -520,11 +640,57 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                           if (requestedBase64Images.length < 3) GestureDetector(onTap: () => pickImage(requestedBase64Images), child: Container(width: 70, height: 70, decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(10), color: Colors.grey.shade50), child: const Icon(Icons.add_a_photo_outlined, color: Color(0xFF427AB5)))),
                         ],
                       ),
+                      const SizedBox(height: 20),
+                      const Text("Video Permintaan User (Opsional, Maks 1)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF427AB5))),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          if (existingVideoUrl != null && selectedVideo == null)
+                            Stack(
+                              children: [
+                                Container(
+                                  width: 100, height: 70, decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(10)),
+                                  child: const Center(child: Icon(Icons.play_circle_fill, color: Colors.white, size: 30)),
+                                ),
+                                Positioned(top: 0, right: 0, child: GestureDetector(onTap: () => setStateDialog(() => existingVideoUrl = null), child: Container(decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle), child: const Icon(Icons.close, color: Colors.white, size: 16))))
+                              ]
+                            )
+                          else if (selectedVideo != null)
+                            Stack(
+                              children: [
+                                Container(
+                                  width: 100, height: 70, decoration: BoxDecoration(color: Colors.indigo.shade100, borderRadius: BorderRadius.circular(10)),
+                                  child: const Center(child: Icon(Icons.video_file, color: Colors.indigo, size: 30)),
+                                ),
+                                Positioned(top: 0, right: 0, child: GestureDetector(onTap: () => setStateDialog(() => selectedVideo = null), child: Container(decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle), child: const Icon(Icons.close, color: Colors.white, size: 16))))
+                              ]
+                            )
+                          else
+                            GestureDetector(onTap: pickVideo, child: Container(width: 100, height: 70, decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(10), color: Colors.grey.shade50), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: const [Icon(Icons.video_library, color: Color(0xFF427AB5)), SizedBox(height: 4), Text("Pilih Video", style: TextStyle(fontSize: 10, color: Colors.grey))]))),
+                        ],
+                      ),
                     ],
                     const SizedBox(height: 30),
                     Row(
                       children: [
-                        Expanded(child: TextButton(onPressed: () => Navigator.pop(context), child: const Text("Tutup"))),
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(foregroundColor: Colors.red, side: const BorderSide(color: Colors.red), padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+                            onPressed: () async {
+                              try {
+                                await _packageService.deletePackageByAdmin(item["id"] ?? "", item["resi"] ?? "", item["userId"]);
+                                if (mounted) {
+                                  CustomNotification.showSuccess(context, "Paket berhasil dihapus!");
+                                  Navigator.pop(context);
+                                }
+                              } catch(e) {
+                                if (mounted) CustomNotification.showError(context, "Gagal menghapus: $e");
+                              }
+                            },
+                            child: const Text("Hapus", style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
                         const SizedBox(width: 15),
                         Expanded(
                           child: ElevatedButton(
@@ -532,11 +698,17 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                             onPressed: isSaving ? null : () async {
                               setStateDialog(() => isSaving = true);
                               try {
+                                String? finalVideoUrl = existingVideoUrl;
+                                if (selectedVideo != null) {
+                                  finalVideoUrl = await _packageService.uploadVideoToStorage(selectedVideo!);
+                                }
+
                                 await _packageService.updatePackageImages(
                                   item["resi"], 
                                   item["userId"], 
                                   base64Images,
                                   requestedImages: requestedBase64Images,
+                                  requestedVideoUrl: finalVideoUrl,
                                   isFulfillingRequest: item["catatanUser"] != null
                                 );
                                 
@@ -666,45 +838,74 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
           const SizedBox(height: 15),
           
           // SEARCH BAR (Neat & Aligned)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              width: isMobile ? double.infinity : 300,
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                onChanged: (v) => setState(() {}),
-                style: const TextStyle(fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: "Cari Resi atau Nama...",
-                  hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
-                  prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF427AB5), size: 18),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+          Wrap(
+            spacing: 15,
+            runSpacing: 15,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Container(
+                width: isMobile ? double.infinity : 300,
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  onChanged: (v) => setState(() {}),
+                  style: const TextStyle(fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: "Cari Resi atau Nama...",
+                    hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
+                    prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF427AB5), size: 18),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 ),
               ),
-            ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.shade100),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedDateFilter,
+                    dropdownColor: Colors.white,
+                    icon: Icon(Icons.calendar_today, size: 16, color: Colors.blue.shade700),
+                    style: TextStyle(fontSize: 13, color: Colors.blue.shade900, fontWeight: FontWeight.bold),
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          selectedDateFilter = newValue;
+                        });
+                      }
+                    },
+                    items: <String>['Semua Waktu', 'Hari Ini', '3 Hari Terakhir', 'Seminggu Terakhir']
+                        .map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: Text(value),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
           ),
 
           const SizedBox(height: 15),
-          Row(
-            children: [
-              _filterTab("All"),
-              _filterTab("Kecil"),
-              _filterTab("Sedang"),
-              _filterTab("Besar"),
-            ],
-          ),
           const SizedBox(height: 15),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
@@ -740,8 +941,37 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                   String resi = (item["resi"] ?? "").toString().toLowerCase();
                   String nama = (item["nama"] ?? "").toString().toLowerCase();
                   bool matchesQuery = resi.contains(query) || nama.contains(query);
-                  bool matchesFilter = (selectedFilter == "All") || (item["kategori"] == selectedFilter);
-                  return matchesQuery && matchesFilter;
+                  
+                  bool matchesFilter = true;
+                  bool isRequest = item["catatanUser"] != null && item["catatanUser"].toString().isNotEmpty;
+                  bool isRejected = item["rejectionReason"] != null && item["userApprovalStatus"] != "approved";
+
+                  if (selectedFilter == "Request") {
+                    matchesFilter = isRequest;
+                  } else if (selectedFilter == "Ditolak") {
+                    matchesFilter = isRejected;
+                  } else {
+                    // "All" filter excludes requests and rejected items
+                    matchesFilter = !isRequest && !isRejected;
+                  }
+                  
+                  bool matchesDate = true;
+                  if (selectedDateFilter != "Semua Waktu" && item["createdAt"] != null) {
+                    DateTime createdAt = (item["createdAt"] as Timestamp).toDate();
+                    DateTime now = DateTime.now();
+                    DateTime today = DateTime(now.year, now.month, now.day);
+                    DateTime docDate = DateTime(createdAt.year, createdAt.month, createdAt.day);
+                    
+                    if (selectedDateFilter == "Hari Ini") {
+                      matchesDate = docDate.isAtSameMomentAs(today);
+                    } else if (selectedDateFilter == "3 Hari Terakhir") {
+                      matchesDate = docDate.isAfter(today.subtract(const Duration(days: 3)));
+                    } else if (selectedDateFilter == "Seminggu Terakhir") {
+                      matchesDate = docDate.isAfter(today.subtract(const Duration(days: 7)));
+                    }
+                  }
+
+                  return matchesQuery && matchesFilter && matchesDate;
                 }).toList();
 
                 if (filteredDocs.isEmpty) return const Center(child: Text("Data tidak ditemukan"));
@@ -756,8 +986,12 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                   ),
                   itemCount: filteredDocs.length,
                   itemBuilder: (context, index) {
-                    var item = filteredDocs[index].data() as Map<String, dynamic>;
+                    var doc = filteredDocs[index];
+                    var item = doc.data() as Map<String, dynamic>;
+                    item["id"] = doc.id;
                     bool hasNote = item["catatanUser"] != null;
+                    bool isRejected = item["rejectionReason"] != null && item["userApprovalStatus"] != "approved";
+                    bool isWaitingUser = item["userApprovalStatus"] == "pending" && item["isUpdatedByAdmin"] == true && isRejected;
                     Color katColor = _getKategoriColor(item["kategori"]);
 
                     return InkWell(
@@ -770,14 +1004,14 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                           borderRadius: BorderRadius.circular(18),
                           boxShadow: [
                             BoxShadow(
-                              color: hasNote ? Colors.indigo.withOpacity(0.15) : const Color(0xFF427AB5).withOpacity(0.1),
+                              color: isRejected ? Colors.red.withOpacity(0.15) : hasNote ? Colors.indigo.withOpacity(0.15) : const Color(0xFF427AB5).withOpacity(0.1),
                               blurRadius: 15,
                               offset: const Offset(0, 8),
                             ),
                           ],
                           border: Border.all(
-                            color: hasNote ? Colors.indigo.withOpacity(0.6) : const Color(0xFF427AB5).withOpacity(0.2), 
-                            width: hasNote ? 2 : 1.2
+                            color: isRejected ? Colors.red.withOpacity(0.6) : hasNote ? Colors.indigo.withOpacity(0.6) : const Color(0xFF427AB5).withOpacity(0.2), 
+                            width: (hasNote || isRejected) ? 2 : 1.2
                           ),
                         ),
                         child: Column(
@@ -787,9 +1021,11 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  colors: hasNote 
-                                    ? [const Color(0xFF6366F1), const Color(0xFF4F46E5)] // Indigo/Violet modern
-                                    : [const Color(0xFF427AB5), const Color(0xFF2C5282)],
+                                  colors: isRejected 
+                                    ? [const Color(0xFFEF4444), const Color(0xFFB91C1C)]
+                                    : hasNote 
+                                      ? [const Color(0xFF6366F1), const Color(0xFF4F46E5)] // Indigo/Violet modern
+                                      : [const Color(0xFF427AB5), const Color(0xFF2C5282)],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
@@ -805,7 +1041,22 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  if (hasNote)
+                                  if (isRejected)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(6),
+                                        boxShadow: [
+                                          BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2))
+                                        ],
+                                      ),
+                                      child: Text(
+                                        isWaitingUser ? "MENUNGGU USER" : "DITOLAK USER", 
+                                        style: const TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)
+                                      ),
+                                    )
+                                  else if (hasNote)
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                       decoration: BoxDecoration(
@@ -917,36 +1168,6 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
     if (kategori == "Sedang") return Colors.orange.shade800;
     if (kategori == "Besar") return Colors.green.shade700;
     return Colors.grey.shade700;
-  }
-
-  Widget _filterTab(String title) {
-    bool active = selectedFilter == title;
-    Color tabColor = const Color(0xFF427AB5);
-    if (title == "Kecil") tabColor = Colors.redAccent;
-    if (title == "Sedang") tabColor = Colors.orangeAccent;
-    if (title == "Besar") tabColor = Colors.greenAccent;
-
-    return GestureDetector(
-      onTap: () => setState(() => selectedFilter = title),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(right: 15),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        decoration: BoxDecoration(
-          color: active ? tabColor : Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: active ? tabColor : Colors.grey.shade200),
-          boxShadow: active ? [BoxShadow(color: tabColor.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))] : [],
-        ),
-        child: Text(
-          title,
-          style: TextStyle(
-            color: active ? Colors.white : Colors.grey.shade600,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
   }
 }
 

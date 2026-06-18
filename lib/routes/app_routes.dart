@@ -5,6 +5,7 @@ import '../screens/auth/register_page.dart';
 import '../screens/admin/dashboard_admin.dart';
 import '../screens/user/dashboard_user.dart';
 import '../screens/landing_page.dart';
+import '../screens/auth/role_guard.dart';
 
 class AppRoutes {
   // 🔥 ROUTE NAME (BIAR GA TYPO)
@@ -19,8 +20,8 @@ class AppRoutes {
   static Map<String, WidgetBuilder> routes = {
     splash: (context) => const AuthWrapper(),
     login: (context) => LoginPage(),
-    adminDashboard: (context) => const DashboardAdmin(),
-    userDashboard: (context) => const DashboardUser(),
+    adminDashboard: (context) => const RoleGuard(requiredRole: 'admin', child: DashboardAdmin()),
+    userDashboard: (context) => const RoleGuard(requiredRole: 'user', child: DashboardUser()),
     landing: (context) => const LandingPage(),
     register: (context) => const RegisterPage(),
   };

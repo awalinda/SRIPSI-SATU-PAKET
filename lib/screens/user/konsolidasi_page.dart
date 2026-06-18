@@ -21,6 +21,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../services/package_service.dart';
 import 'dashboard_user.dart';
+import '../../widgets/custom_notification.dart';
 
 class KonsolidasiPage extends StatefulWidget {
   final List<Map<String, dynamic>> selectedPaket;
@@ -1255,25 +1256,7 @@ class _KonsolidasiPageState extends State<KonsolidasiPage> {
   Future<void> _submitOrder() async {
     // 🛑 VALIDASI ALAMAT (Jika Antar ke Rumah)
     if (tipe == "antar" && _selectedAddress == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.location_off_rounded, color: Colors.white),
-              SizedBox(width: 10),
-              Text(
-                "Harap tambahkan alamat pengiriman!",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.orangeAccent,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-        ),
-      );
+      CustomNotification.showWarning(context, "Harap tambahkan alamat pengiriman!");
       return;
     }
 
@@ -1281,25 +1264,7 @@ class _KonsolidasiPageState extends State<KonsolidasiPage> {
     if (tipe == "antar" &&
         selectedPembayaran == "Transfer" &&
         _proofImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.error_outline_rounded, color: Colors.white),
-              SizedBox(width: 10),
-              Text(
-                "Harap unggah bukti pembayaran!",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-        ),
-      );
+      CustomNotification.showError(context, "Harap unggah bukti pembayaran!");
       return;
     }
 
@@ -1392,12 +1357,7 @@ class _KonsolidasiPageState extends State<KonsolidasiPage> {
         ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Gagal membuat pesanan: $e"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      CustomNotification.showError(context, "Gagal membuat pesanan: $e");
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

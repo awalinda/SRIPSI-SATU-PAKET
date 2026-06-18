@@ -61,7 +61,7 @@ class AuthService {
       return userCredential;
     } catch (e) {
       print("Error signing in with Google: $e");
-      return null;
+      rethrow;
     }
   }
 
@@ -219,6 +219,10 @@ class AuthService {
           return "Koneksi internet bermasalah. Periksa koneksi Anda.";
         case 'too-many-requests':
           return "Terlalu banyak percobaan. Silakan coba lagi nanti.";
+        case 'popup-closed-by-user':
+          return "Proses login dengan Google dibatalkan oleh pengguna.";
+        case 'popup-blocked':
+          return "Popup login diblokir oleh browser. Izinkan popup untuk login.";
         default:
           return "Terjadi kesalahan: ${e.message ?? 'Unknown error'}";
       }

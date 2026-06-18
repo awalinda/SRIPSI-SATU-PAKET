@@ -30,11 +30,22 @@ class _DashboardAdminState extends State<DashboardAdmin> {
   StreamSubscription? _adminEventSub;
   final DateTime _sessionStartTime = DateTime.now();
 
+  late Stream<QuerySnapshot> _packagesStream;
+  late Stream<QuerySnapshot> _pengirimanStream;
+  late Stream<QuerySnapshot> _ordersStream;
+  late Stream<QuerySnapshot> _chatRoomsStream;
+  late Stream<QuerySnapshot> _userStream;
+
   bool get isMobile => MediaQuery.of(context).size.width <= 1100;
 
   @override
   void initState() {
     super.initState();
+    _packagesStream = _packageService.getAdminPackagesStream();
+    _pengirimanStream = OrderService.getPengirimanStream();
+    _ordersStream = FirebaseFirestore.instance.collection('orders').snapshots();
+    _chatRoomsStream = FirebaseFirestore.instance.collection('chatRooms').snapshots();
+    _userStream = FirebaseFirestore.instance.collection('user').snapshots();
     _listenForAdminEvents();
   }
 
@@ -385,9 +396,9 @@ class _DashboardAdminState extends State<DashboardAdmin> {
     bool active = selectedIndex == index;
 
     Stream<QuerySnapshot> getStream() {
-      if (title == "Konfirmasi Pesanan") return FirebaseFirestore.instance.collection('orders').snapshots();
-      if (title == "Pesan") return FirebaseFirestore.instance.collection('chatRooms').snapshots();
-      return _packageService.getAdminPackagesStream();
+      if (title == "Konfirmasi Pesanan") return _ordersStream;
+      if (title == "Pesan") return _chatRoomsStream;
+      return _packagesStream;
     }
 
     return StreamBuilder<QuerySnapshot>(
@@ -484,19 +495,19 @@ class _DashboardAdminState extends State<DashboardAdmin> {
   // ================= DASHBOARD =================
   Widget _dashboardContent() {
     return StreamBuilder<QuerySnapshot>(
-      stream: _packageService.getAdminPackagesStream(),
+      stream: _packagesStream,
       builder: (context, packageSnapshot) {
         return StreamBuilder<QuerySnapshot>(
-          stream: OrderService.getPengirimanStream(),
+          stream: _pengirimanStream,
           builder: (context, pengirimanSnapshot) {
             return StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('orders').snapshots(),
+              stream: _ordersStream,
               builder: (context, orderSnapshot) {
                 return StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance.collection('chatRooms').snapshots(),
+                  stream: _chatRoomsStream,
                   builder: (context, chatSnapshot) {
                     return StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance.collection('user').snapshots(),
+                      stream: _userStream,
                       builder: (context, userSnapshot) {
                         // 1. Error & Loading State Check
                         if (packageSnapshot.hasError || pengirimanSnapshot.hasError || orderSnapshot.hasError || chatSnapshot.hasError || userSnapshot.hasError) {

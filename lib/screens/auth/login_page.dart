@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../routes/app_routes.dart';
 import '../../services/auth_service.dart';
 import 'register_page.dart';
@@ -223,9 +224,24 @@ class _LoginPageState extends State<LoginPage> {
                                               final user = userCredential.user;
                                               if (user != null &&
                                                   context.mounted) {
+                                                // Cek verifikasi email terbaru dari server
+                                                await FirebaseAuth.instance.currentUser?.reload();
+                                                final updatedUser = FirebaseAuth.instance.currentUser;
+                                                
                                                 String? role =
                                                     await AuthService()
                                                         .getUserRole(user.uid);
+
+                                                if (updatedUser != null && !updatedUser.emailVerified && role != 'admin') {
+                                                  await AuthService().signOut();
+                                                  CustomNotification.showError(
+                                                    context,
+                                                    "Silahkan verifikasi email terlebih dahulu.",
+                                                  );
+                                                  setState(() => _isLoading = false);
+                                                  return;
+                                                }
+
                                                 if (context.mounted) {
                                                   if (role == "admin") {
                                                     CustomNotification.showSuccess(

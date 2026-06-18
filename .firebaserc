@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "satupaket-a7b4c"
-  }
+  },
+  "targets": {
+    "satupaket-a7b4c": {
+      "hosting": {
+        "main": [
+          "satupaket"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

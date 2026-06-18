@@ -2,6 +2,7 @@ import 'package:satupaket/services/order_service.dart';
 import 'package:satupaket/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import '../../widgets/custom_notification.dart';
@@ -17,6 +18,7 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
   final Set<String> selectedOrders = {};
   bool _isLoading = false;
   String _searchQuery = "";
+  String _selectedFilter = "Semua"; // Filter status
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
@@ -428,6 +430,34 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
     }
   }
 
+  Widget _filterTab(String label) {
+    bool active = _selectedFilter == label;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedFilter = label),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(right: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFF427AB5) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: active ? const Color(0xFF427AB5) : Colors.grey.shade300),
+          boxShadow: active
+              ? [BoxShadow(color: const Color(0xFF427AB5).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3))]
+              : [],
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? Colors.white : Colors.grey.shade600,
+            fontWeight: active ? FontWeight.bold : FontWeight.w500,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -490,7 +520,18 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
               ),
             ),
           ),
-          const SizedBox(height: 25),
+          const SizedBox(height: 15),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _filterTab("Semua"),
+                _filterTab("Menunggu Konfirmasi"),
+                _filterTab("Diproses"),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
           StreamBuilder<QuerySnapshot>(
             stream: OrderService.getAllOrdersStream(),
             builder: (context, snapshot) {
@@ -517,7 +558,10 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
                   }
                 }
                 
-                return nama.contains(_searchQuery) || uid.contains(_searchQuery) || tgl.contains(_searchQuery);
+                bool matchesQuery = nama.contains(_searchQuery) || uid.contains(_searchQuery) || tgl.contains(_searchQuery);
+                bool matchesFilter = _selectedFilter == "Semua" || data["status"] == _selectedFilter;
+                
+                return matchesQuery && matchesFilter;
               }).toList();
 
               // Urutkan: Menunggu Konfirmasi dulu, baru Diproses
@@ -643,15 +687,21 @@ class _BentoOrderCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _miniPreview(item),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text("TOTAL", style: TextStyle(fontSize: 7, fontWeight: FontWeight.w900, color: Colors.grey.shade400, letterSpacing: 0.5)),
-                        Text(
-                          "Rp${item["total"] ?? 0}",
-                          style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF10B981), fontSize: 14),
-                        ),
-                      ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text("TOTAL", style: TextStyle(fontSize: 7, fontWeight: FontWeight.w900, color: Colors.grey.shade400, letterSpacing: 0.5)),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              NumberFormat.currency(locale: 'id', symbol: 'Rp', decimalDigits: 0).format(double.tryParse(item["total"].toString()) ?? 0),
+                              style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF10B981), fontSize: 14),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),

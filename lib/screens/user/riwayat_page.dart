@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../../services/order_service.dart';
 import '../../services/auth_service.dart';
 import 'invoice_page.dart';
@@ -178,9 +179,13 @@ class RiwayatPage extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        Text(
-                          "Rp${o["total"]}",
-                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            NumberFormat.currency(locale: 'id', symbol: 'Rp', decimalDigits: 0).format(double.tryParse(o["total"].toString()) ?? 0),
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
                         ),
                       ],
                     ),

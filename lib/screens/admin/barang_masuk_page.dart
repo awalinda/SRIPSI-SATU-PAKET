@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -291,6 +292,10 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                       controller: berat,
                       onChanged: (v) => setStateDialog(() {}),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(6), // Max 999,999 gram
+                      ],
                       decoration: InputDecoration(
                         labelText: "Berat (gram)",
                         prefixIcon: const Icon(Icons.monitor_weight_outlined),
@@ -317,11 +322,11 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Expanded(child: TextField(controller: panjang, keyboardType: TextInputType.number, onChanged: (v) { cekKategori(); setStateDialog(() {}); }, decoration: const InputDecoration(labelText: "P", border: OutlineInputBorder()))),
+                        Expanded(child: TextField(controller: panjang, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(4)], onChanged: (v) { cekKategori(); setStateDialog(() {}); }, decoration: const InputDecoration(labelText: "P", border: OutlineInputBorder()))),
                         const SizedBox(width: 10),
-                        Expanded(child: TextField(controller: lebar, keyboardType: TextInputType.number, onChanged: (v) { cekKategori(); setStateDialog(() {}); }, decoration: const InputDecoration(labelText: "L", border: OutlineInputBorder()))),
+                        Expanded(child: TextField(controller: lebar, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(4)], onChanged: (v) { cekKategori(); setStateDialog(() {}); }, decoration: const InputDecoration(labelText: "L", border: OutlineInputBorder()))),
                         const SizedBox(width: 10),
-                        Expanded(child: TextField(controller: tinggi, keyboardType: TextInputType.number, onChanged: (v) { cekKategori(); setStateDialog(() {}); }, decoration: const InputDecoration(labelText: "T", border: OutlineInputBorder()))),
+                        Expanded(child: TextField(controller: tinggi, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(4)], onChanged: (v) { cekKategori(); setStateDialog(() {}); }, decoration: const InputDecoration(labelText: "T", border: OutlineInputBorder()))),
                       ],
                     ),
 

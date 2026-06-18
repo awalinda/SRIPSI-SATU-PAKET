@@ -88,7 +88,6 @@ class _LandingPageState extends State<LandingPage> {
                 _buildFeatures(isDesktop),
                 _buildPromoBanner(isDesktop),
                 _buildCTASection(isDesktop),
-                _buildFooter(isDesktop),
               ],
             ),
           ),
@@ -825,47 +824,4 @@ class _LandingPageState extends State<LandingPage> {
     );
   }
 
-
-  Widget _buildFooter(bool isDesktop) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 50),
-      color: Colors.white,
-      child: Column(
-        children: [
-          const Divider(),
-          const SizedBox(height: 40),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("SATUPAKET", style: GoogleFonts.poppins(color: const Color(0xFF1E3C72), fontSize: 24, fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 12),
-                  Text("Solusi Logistik Hemat Lampung", style: TextStyle(color: Colors.black.withOpacity(0.4), fontSize: 14)),
-                ],
-              ),
-              if (isDesktop)
-                Row(
-                  children: [
-                    _footerLink("Tentang Kami"),
-                    const SizedBox(width: 30),
-                    _footerLink("Hubungi Kami"),
-                    const SizedBox(width: 30),
-                    _footerLink("Privasi"),
-                  ],
-                ),
-            ],
-          ),
-          const SizedBox(height: 60),
-          Text("© 2026 Satupaket Technology. All rights reserved.", style: TextStyle(color: Colors.black.withOpacity(0.3), fontSize: 12)),
-        ],
-      ),
-    );
-  }
-
-  Widget _footerLink(String text) {
-    return Text(text, style: TextStyle(color: Colors.black.withOpacity(0.6), fontSize: 14, fontWeight: FontWeight.w600));
-  }
 }

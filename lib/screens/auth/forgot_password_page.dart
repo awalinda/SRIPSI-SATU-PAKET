@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/custom_notification.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -137,9 +138,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   Future<void> _handleReset() async {
     if (_emailController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Harap isi email Anda")),
-      );
+      CustomNotification.showWarning(context, "Harap isi email Anda");
       return;
     }
 
@@ -147,16 +146,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     try {
       await AuthService().sendPasswordResetEmail(_emailController.text.trim());
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Link reset kata sandi telah dikirim!")),
-        );
+        CustomNotification.showSuccess(context, "Link reset kata sandi telah dikirim!");
         Navigator.pop(context);
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: ${e.toString()}")),
-        );
+        CustomNotification.showError(context, "Error: ${e.toString()}");
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

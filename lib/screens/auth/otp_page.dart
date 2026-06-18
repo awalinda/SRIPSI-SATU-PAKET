@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/custom_notification.dart';
 
 class OtpPage extends StatefulWidget {
   final String phone;
@@ -20,16 +21,12 @@ class _OtpPageState extends State<OtpPage> {
     String inputOtp = otpController.map((e) => e.text).join();
 
     if (inputOtp == correctOtp) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Verifikasi Berhasil")));
+      CustomNotification.showSuccess(context, "Verifikasi Berhasil");
 
       // 👉 pindah ke dashboard / login
       Navigator.pop(context);
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Kode OTP salah")));
+      CustomNotification.showError(context, "Kode OTP salah");
     }
   }
 
@@ -145,9 +142,7 @@ class _OtpPageState extends State<OtpPage> {
                 // 🔁 RESEND
                 TextButton(
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Kode OTP dikirim ulang")),
-                    );
+                    CustomNotification.showInfo(context, "Kode OTP dikirim ulang");
                   },
                   child: const Text(
                     "Kirim Ulang",

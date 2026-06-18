@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/auth_service.dart';
 import 'terms_page.dart';
+import '../../widgets/custom_notification.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -61,7 +62,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  user?.displayName ?? "Pengguna",
+                  userData?['name'] ?? user?.displayName ?? "Pengguna",
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -69,7 +70,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
                 Text(
-                  user?.email ?? "email@belum_diatur.com",
+                  userData?['email'] ?? user?.email ?? "email@belum_diatur.com",
                   style: const TextStyle(color: Color(0xFF94A3B8)),
                 ),
                 const SizedBox(height: 12),
@@ -107,35 +108,22 @@ class _ProfilePageState extends State<ProfilePage> {
                       actionIcon: Icons.copy_rounded,
                       onTap: () {
                         Clipboard.setData(ClipboardData(text: userIdCode));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Row(
-                              children: const [
-                                Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                                SizedBox(width: 10),
-                                Text("ID Pengguna berhasil disalin!"),
-                              ],
-                            ),
-                            backgroundColor: const Color(0xFF427AB5),
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                        );
+                        CustomNotification.showSuccess(context, "ID Pengguna berhasil disalin!");
                       },
                     ),
                     _profileItem(
                       Icons.person_outline, 
                       "Nama Lengkap", 
-                      user?.displayName ?? "Belum diatur",
+                      userData?['name'] ?? user?.displayName ?? "Belum diatur",
                       isAction: true,
-                      onTap: () => _showEditNameDialog(user?.displayName ?? ""),
+                      onTap: () => _showEditNameDialog(userData?['name'] ?? user?.displayName ?? ""),
                     ),
                     _profileItem(
                       Icons.email_outlined, 
                       "Email", 
-                      user?.email ?? "Belum diatur",
+                      userData?['email'] ?? user?.email ?? "Belum diatur",
                       isAction: true,
-                      onTap: () => _showEditEmailDialog(user?.email ?? ""),
+                      onTap: () => _showEditEmailDialog(userData?['email'] ?? user?.email ?? ""),
                     ),
                     _profileItem(
                       Icons.phone_outlined, 
@@ -336,9 +324,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   await AuthService().updateEmail(emailEditController.text.trim());
                   if (context.mounted) {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Link verifikasi telah dikirim ke email baru.")),
-                    );
+                    CustomNotification.showSuccess(context, "Link verifikasi telah dikirim ke email baru.");
                   }
                 } catch (e) {
                   if (context.mounted) {
@@ -346,7 +332,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     if (e.toString().contains("requires-recent-login")) {
                       error = "Keamanan: Silakan keluar dan masuk kembali sebelum ganti email.";
                     }
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+                    CustomNotification.showError(context, error);
                   }
                 }
               }
@@ -463,11 +449,11 @@ class _ProfilePageState extends State<ProfilePage> {
             ElevatedButton(
               onPressed: () async {
                 if (newPassController.text.isEmpty || confirmPassController.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Isi semua bidang")));
+                  CustomNotification.showError(context, "Isi semua bidang");
                   return;
                 }
                 if (newPassController.text != confirmPassController.text) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Password tidak cocok")));
+                  CustomNotification.showError(context, "Password tidak cocok");
                   return;
                 }
 
@@ -475,7 +461,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   await AuthService().updatePassword(newPassController.text);
                   if (context.mounted) {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Password berhasil diperbarui")));
+                    CustomNotification.showSuccess(context, "Password berhasil diperbarui");
                   }
                 } catch (e) {
                   if (context.mounted) {
@@ -483,7 +469,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     if (e.toString().contains("requires-recent-login")) {
                       error = "Keamanan: Silakan keluar dan masuk kembali sebelum ganti password.";
                     }
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+                    CustomNotification.showError(context, error);
                   }
                 }
               },

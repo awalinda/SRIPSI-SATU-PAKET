@@ -78,22 +78,7 @@ class _DashboardUserState extends State<DashboardUser> {
         final now = DateTime.now();
         if (_lastBackPress == null || now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
           _lastBackPress = now;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(
-                children: [
-                  Icon(Icons.exit_to_app_rounded, color: Colors.white, size: 18),
-                  SizedBox(width: 10),
-                  Text("Tekan sekali lagi untuk keluar"),
-                ],
-              ),
-              duration: const Duration(seconds: 2),
-              backgroundColor: const Color(0xFF1E3C72),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              margin: const EdgeInsets.all(16),
-            ),
-          );
+          CustomNotification.showInfo(context, "Tekan sekali lagi untuk keluar");
           return;
         }
 

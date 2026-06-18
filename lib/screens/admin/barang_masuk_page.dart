@@ -13,7 +13,8 @@ import '../../widgets/custom_notification.dart';
 import '../../services/notification_service.dart';
 
 class BarangMasukPage extends StatefulWidget {
-  const BarangMasukPage({super.key});
+  final String filter;
+  const BarangMasukPage({super.key, this.filter = "All"});
 
   @override
   State<BarangMasukPage> createState() => _BarangMasukPageState();
@@ -24,11 +25,27 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
   final TextEditingController _searchController = TextEditingController();
   bool _isLoading = false;
   final ReportService _reportService = ReportService();
-  String selectedFilter = "All"; // Untuk filter tabel UI
+  late String selectedFilter; // Untuk filter tabel UI
   String selectedDateFilter = "Semua Waktu"; // Untuk filter tanggal
   final FocusNode _searchFocusNode = FocusNode();
 
   bool get isMobile => MediaQuery.of(context).size.width < 800;
+
+  @override
+  void initState() {
+    super.initState();
+    selectedFilter = widget.filter;
+  }
+
+  @override
+  void didUpdateWidget(BarangMasukPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.filter != widget.filter) {
+      setState(() {
+        selectedFilter = widget.filter;
+      });
+    }
+  }
 
   // 🔥 DIALOG PILIH LAPORAN
   void _handleCetakLaporan() {
@@ -889,16 +906,6 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
           ),
 
           const SizedBox(height: 15),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _filterTab("All"),
-                _filterTab("Request"),
-                _filterTab("Ditolak"),
-              ],
-            ),
-          ),
           const SizedBox(height: 15),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
@@ -936,10 +943,16 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                   bool matchesQuery = resi.contains(query) || nama.contains(query);
                   
                   bool matchesFilter = true;
+                  bool isRequest = item["catatanUser"] != null && item["catatanUser"].toString().isNotEmpty;
+                  bool isRejected = item["rejectionReason"] != null && item["userApprovalStatus"] != "approved";
+
                   if (selectedFilter == "Request") {
-                    matchesFilter = item["catatanUser"] != null && item["catatanUser"].toString().isNotEmpty;
+                    matchesFilter = isRequest;
                   } else if (selectedFilter == "Ditolak") {
-                    matchesFilter = item["rejectionReason"] != null && item["userApprovalStatus"] != "approved";
+                    matchesFilter = isRejected;
+                  } else {
+                    // "All" filter excludes requests and rejected items
+                    matchesFilter = !isRequest && !isRejected;
                   }
                   
                   bool matchesDate = true;
@@ -1155,35 +1168,6 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
     if (kategori == "Sedang") return Colors.orange.shade800;
     if (kategori == "Besar") return Colors.green.shade700;
     return Colors.grey.shade700;
-  }
-
-  Widget _filterTab(String title) {
-    bool active = selectedFilter == title;
-    Color tabColor = const Color(0xFF427AB5);
-    if (title == "Request") tabColor = const Color(0xFF4F46E5);
-    if (title == "Ditolak") tabColor = Colors.red.shade600;
-
-    return GestureDetector(
-      onTap: () => setState(() => selectedFilter = title),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(right: 15),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        decoration: BoxDecoration(
-          color: active ? tabColor : Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: active ? tabColor : Colors.grey.shade200),
-          boxShadow: active ? [BoxShadow(color: tabColor.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))] : [],
-        ),
-        child: Text(
-          title,
-          style: TextStyle(
-            color: active ? Colors.white : Colors.grey.shade600,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
   }
 }
 

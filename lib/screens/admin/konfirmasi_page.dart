@@ -7,7 +7,8 @@ import 'dart:typed_data';
 import '../../widgets/custom_notification.dart';
 
 class KonfirmasiPage extends StatefulWidget {
-  const KonfirmasiPage({super.key});
+  final String filter;
+  const KonfirmasiPage({super.key, this.filter = "Menunggu Konfirmasi"});
 
   @override
   State<KonfirmasiPage> createState() => _KonfirmasiPageState();
@@ -20,9 +21,25 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   String selectedDateFilter = "Semua Waktu";
-  String selectedStatusFilter = "Semua Status";
+  late String selectedStatusFilter;
 
   bool get isMobile => MediaQuery.of(context).size.width < 800;
+
+  @override
+  void initState() {
+    super.initState();
+    selectedStatusFilter = widget.filter;
+  }
+
+  @override
+  void didUpdateWidget(KonfirmasiPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.filter != widget.filter) {
+      setState(() {
+        selectedStatusFilter = widget.filter;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -515,36 +532,6 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
                       }
                     },
                     items: <String>['Semua Waktu', 'Hari Ini', '3 Hari Terakhir', 'Seminggu Terakhir']
-                        .map<DropdownMenuItem<String>>((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Padding(padding: const EdgeInsets.only(right: 8.0), child: Text(value)),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.green.shade100),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: selectedStatusFilter,
-                    dropdownColor: Colors.white,
-                    icon: Icon(Icons.filter_list_rounded, size: 16, color: Colors.green.shade700),
-                    style: TextStyle(fontSize: 13, color: Colors.green.shade900, fontWeight: FontWeight.bold),
-                    onChanged: (String? newValue) {
-                      if (newValue != null) {
-                        setState(() {
-                          selectedStatusFilter = newValue;
-                        });
-                      }
-                    },
-                    items: <String>['Semua Status', 'Menunggu Konfirmasi', 'Diproses']
                         .map<DropdownMenuItem<String>>((String value) {
                       return DropdownMenuItem<String>(
                         value: value,

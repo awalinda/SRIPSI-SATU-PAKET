@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/package_service.dart';
+import '../../services/layanan_service.dart';
 import '../../widgets/custom_notification.dart';
 
 class DetailPaketPage extends StatefulWidget {
@@ -18,11 +19,39 @@ class _DetailPaketPageState extends State<DetailPaketPage> {
   List<String> selectedNotes = [];
   bool _isSubmitting = false;
 
-  // Opsi catatan + biaya tambahan
-  final List<Map<String, dynamic>> _noteOptions = [
-    {"label": "Minta foto lebih detail (kanan, kiri, depan, belakang)", "biaya": 2000},
-    {"label": "Unboxing paket", "biaya": 3000},
-  ];
+  // Opsi catatan + biaya tambahan dinamis
+  List<Map<String, dynamic>> _noteOptions = [];
+  bool _isLoadingOptions = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchNoteOptions();
+  }
+
+  Future<void> _fetchNoteOptions() async {
+    try {
+      final snapshot = await LayananService().getLayananStream().first;
+      if (mounted) {
+        setState(() {
+          final dataDoc = snapshot.data() as Map<String, dynamic>?;
+          final List<dynamic> items = dataDoc?['items'] ?? [];
+          
+          _noteOptions = items.map((data) {
+            return {
+              "label": data['label'] ?? "Layanan",
+              "biaya": data['biaya'] ?? 0,
+            };
+          }).toList();
+          _isLoadingOptions = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingOptions = false);
+      }
+    }
+  }
 
   int get _selectedBiaya {
     int total = 0;
@@ -428,13 +457,23 @@ class _DetailPaketPageState extends State<DetailPaketPage> {
                     borderRadius: BorderRadius.circular(15),
                     border: Border.all(color: Colors.grey.shade100),
                   ),
-                  child: Column(
-                    children: [
-                      _buildRadioItem(_noteOptions[0]),
-                      const Divider(height: 1, indent: 20, endIndent: 20),
-                      _buildRadioItem(_noteOptions[1]),
-                    ],
-                  ),
+                  child: _isLoadingOptions 
+                      ? const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator()))
+                      : _noteOptions.isEmpty 
+                          ? const Padding(padding: EdgeInsets.all(20), child: Text("Belum ada layanan tersedia.", style: TextStyle(color: Colors.grey)))
+                          : Column(
+                              children: _noteOptions.asMap().entries.map((entry) {
+                                int idx = entry.key;
+                                var opt = entry.value;
+                                return Column(
+                                  children: [
+                                    _buildRadioItem(opt),
+                                    if (idx < _noteOptions.length - 1)
+                                      const Divider(height: 1, indent: 20, endIndent: 20),
+                                  ],
+                                );
+                              }).toList(),
+                            ),
                 ),
   
                 // TOMBOL SUBMIT

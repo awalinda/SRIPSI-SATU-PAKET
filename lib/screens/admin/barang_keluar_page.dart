@@ -7,7 +7,8 @@ import 'dart:async';
 import '../../widgets/custom_notification.dart';
 
 class BarangKeluarPage extends StatefulWidget {
-  const BarangKeluarPage({super.key});
+  final String filter;
+  const BarangKeluarPage({super.key, this.filter = "Diantar"});
 
   @override
   State<BarangKeluarPage> createState() => _BarangKeluarPageState();
@@ -18,7 +19,7 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
   String selectedDateFilter = "Semua Waktu";
-  String selectedStatusFilter = "Diantar";
+  late String selectedStatusFilter;
   bool showOnlyReviewed = false;
   final FocusNode _searchFocusNode = FocusNode();
 
@@ -30,6 +31,8 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
   @override
   void initState() {
     super.initState();
+    selectedStatusFilter = widget.filter;
+    
     // 🔥 Auto update status jika lewat 3 hari
     OrderService.checkAndAutoUpdateSelesai();
 
@@ -52,6 +55,16 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
         }
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(BarangKeluarPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.filter != widget.filter) {
+      setState(() {
+        selectedStatusFilter = widget.filter;
+      });
+    }
   }
 
   @override
@@ -303,39 +316,6 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
                       }
                     },
                     items: <String>['Semua Waktu', 'Hari Ini', '3 Hari Terakhir', 'Seminggu Terakhir']
-                        .map<DropdownMenuItem<String>>((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: Text(value),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.green.shade100),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: selectedStatusFilter,
-                    dropdownColor: Colors.white,
-                    icon: Icon(Icons.filter_list_rounded, size: 16, color: Colors.green.shade700),
-                    style: TextStyle(fontSize: 13, color: Colors.green.shade900, fontWeight: FontWeight.bold),
-                    onChanged: (String? newValue) {
-                      if (newValue != null) {
-                        setState(() {
-                          selectedStatusFilter = newValue;
-                        });
-                      }
-                    },
-                    items: <String>['Diantar', 'Selesai', 'Semua Status']
                         .map<DropdownMenuItem<String>>((String value) {
                       return DropdownMenuItem<String>(
                         value: value,

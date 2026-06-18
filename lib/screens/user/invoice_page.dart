@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 
 class InvoicePage extends StatelessWidget {
   final List<dynamic> paket;
   final String tipe;
   final int total;
+  final double? rating;
+  final String? reviewText;
+  final String? reviewImageBase64;
 
   const InvoicePage({
     super.key,
     required this.paket,
     required this.tipe,
     required this.total,
+    this.rating,
+    this.reviewText,
+    this.reviewImageBase64,
   });
 
   @override
@@ -127,6 +134,56 @@ class InvoicePage extends StatelessWidget {
                 ],
               ),
             ),
+
+            if (rating != null) ...[
+              const SizedBox(height: 20),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(25),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Ulasan Anda", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+                    const SizedBox(height: 15),
+                    Row(
+                      children: List.generate(5, (index) {
+                        return Icon(
+                          index < rating! ? Icons.star_rounded : Icons.star_border_rounded,
+                          color: Colors.amber,
+                          size: 20,
+                        );
+                      }),
+                    ),
+                    if (reviewText != null && reviewText!.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        reviewText!,
+                        style: TextStyle(color: Colors.grey.shade700, fontSize: 13, height: 1.4),
+                      ),
+                    ],
+                    if (reviewImageBase64 != null && reviewImageBase64!.isNotEmpty) ...[
+                      const SizedBox(height: 15),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(15),
+                        child: Image.memory(
+                          base64Decode(reviewImageBase64!),
+                          width: double.infinity,
+                          height: 150,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ]
+                  ],
+                ),
+              ),
+            ],
 
             const SizedBox(height: 30),
 

@@ -163,13 +163,18 @@ class OrderService {
   }
 
   // 🔥 Submit Ulasan
-  static Future<void> submitReview(String orderId, double rating, String reviewText) async {
+  static Future<void> submitReview(String orderId, double rating, String reviewText, {String? reviewImageBase64}) async {
     try {
-      await _firestore.collection('orders').doc(orderId).update({
+      Map<String, dynamic> updateData = {
         "rating": rating,
         "reviewText": reviewText,
         "reviewDate": FieldValue.serverTimestamp(),
-      });
+      };
+      if (reviewImageBase64 != null) {
+        updateData["reviewImageBase64"] = reviewImageBase64;
+      }
+
+      await _firestore.collection('orders').doc(orderId).update(updateData);
 
       // Sync ke pengiriman agar admin bisa melihat
       final doc = await _firestore.collection('orders').doc(orderId).get();
@@ -179,11 +184,7 @@ class OrderService {
         if (resiOrder.isNotEmpty) {
            final pengirimanQuery = await _firestore.collection('pengiriman').where('resiAsal', isEqualTo: resiOrder).get();
            for (var p in pengirimanQuery.docs) {
-             await p.reference.update({
-               "rating": rating,
-               "reviewText": reviewText,
-               "reviewDate": FieldValue.serverTimestamp(),
-             });
+             await p.reference.update(updateData);
            }
         }
       }

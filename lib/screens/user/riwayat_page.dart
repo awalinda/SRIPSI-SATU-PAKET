@@ -4,100 +4,8 @@ import '../../services/order_service.dart';
 import '../../services/auth_service.dart';
 import 'invoice_page.dart';
 
-import '../../widgets/custom_notification.dart';
-
 class RiwayatPage extends StatelessWidget {
   const RiwayatPage({super.key});
-
-  void _showReviewDialog(BuildContext context, String orderId) {
-    double rating = 5.0;
-    TextEditingController reviewController = TextEditingController();
-    bool isSubmitting = false;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: const Text("Beri Ulasan", style: TextStyle(fontWeight: FontWeight.bold)),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text("Bagaimana pengalaman Anda dengan layanan kami?"),
-                  const SizedBox(height: 15),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(5, (index) {
-                      return IconButton(
-                        icon: Icon(
-                          index < rating ? Icons.star_rounded : Icons.star_border_rounded,
-                          color: Colors.amber,
-                          size: 32,
-                        ),
-                        onPressed: () {
-                          setStateDialog(() {
-                            rating = index + 1.0;
-                          });
-                        },
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: reviewController,
-                    decoration: InputDecoration(
-                      hintText: "Tulis komentar Anda (opsional)...",
-                      filled: true,
-                      fillColor: Colors.grey.shade100,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    maxLines: 3,
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isSubmitting ? null : () => Navigator.pop(context),
-                  child: const Text("Batal", style: TextStyle(color: Colors.grey)),
-                ),
-                ElevatedButton(
-                  onPressed: isSubmitting
-                      ? null
-                      : () async {
-                          setStateDialog(() => isSubmitting = true);
-                          try {
-                            await OrderService.submitReview(orderId, rating, reviewController.text);
-                            if (context.mounted) {
-                              Navigator.pop(context);
-                              CustomNotification.showSuccess(context, "Terima kasih atas ulasan Anda!");
-                            }
-                          } catch (e) {
-                            if (context.mounted) {
-                              CustomNotification.showError(context, "Gagal mengirim ulasan");
-                              setStateDialog(() => isSubmitting = false);
-                            }
-                          }
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF427AB5),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: isSubmitting
-                      ? const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text("Kirim", style: TextStyle(color: Colors.white)),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -134,7 +42,7 @@ class RiwayatPage extends StatelessWidget {
 
         final orders = sortedOrders.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
-          return data["status"] == "Selesai";
+          return data["status"] == "Selesai" && data["rating"] != null;
         }).toList();
 
         if (orders.isEmpty) {
@@ -154,9 +62,12 @@ class RiwayatPage extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) => InvoicePage(
-                      paket: o["paket"],
-                      tipe: o["tipe"],
+                      paket: o["paket"] is List ? List<dynamic>.from(o["paket"]) : [],
+                      tipe: o["tipe"]?.toString() ?? "-",
                       total: (o["total"] ?? 0).toInt(),
+                      rating: (o["rating"] as num?)?.toDouble(),
+                      reviewText: o["reviewText"]?.toString(),
+                      reviewImageBase64: o["reviewImageBase64"]?.toString(),
                     ),
                   ),
                 );
@@ -224,30 +135,15 @@ class RiwayatPage extends StatelessWidget {
                           style: const TextStyle(fontWeight: FontWeight.w500),
                         ),
                         const SizedBox(height: 8),
-                        if (o["rating"] == null)
-                          ElevatedButton(
-                            onPressed: () => _showReviewDialog(context, doc.id),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orange.shade50,
-                              foregroundColor: Colors.orange.shade800,
-                              elevation: 0,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: Colors.orange.shade200)),
-                            ),
-                            child: const Text("Beri Ulasan", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                          )
-                        else
-                          Row(
-                            children: List.generate(5, (index) {
-                              return Icon(
-                                index < (o["rating"] as num).toInt() ? Icons.star_rounded : Icons.star_border_rounded,
-                                color: Colors.amber,
-                                size: 16,
-                              );
-                            }),
-                          ),
+                        Row(
+                          children: List.generate(5, (index) {
+                            return Icon(
+                              index < (o["rating"] as num).toInt() ? Icons.star_rounded : Icons.star_border_rounded,
+                              color: Colors.amber,
+                              size: 16,
+                            );
+                          }),
+                        ),
                       ],
                     ),
                   ],

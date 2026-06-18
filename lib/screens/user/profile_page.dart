@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/auth_service.dart';
 import 'terms_page.dart';
-import '../../widgets/custom_notification.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -18,13 +17,21 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    if (user == null) return const Center(child: Text("Pengguna tidak ditemukan", style: TextStyle(color: Colors.white)));
+    if (user == null)
+      return const Center(
+        child: Text(
+          "Pengguna tidak ditemukan",
+          style: TextStyle(color: Colors.white),
+        ),
+      );
 
     return StreamBuilder<DocumentSnapshot>(
       stream: AuthService().getUserData(user!.uid),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: Colors.white));
+          return const Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          );
         }
 
         final userData = snapshot.data?.data() as Map<String, dynamic>?;
@@ -51,18 +58,26 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: CircleAvatar(
                       radius: 60,
                       backgroundColor: Colors.white,
-                      backgroundImage: (userData?['profileUrl'] != null && userData!['profileUrl'].toString().isNotEmpty)
+                      backgroundImage:
+                          (userData?['profileUrl'] != null &&
+                              userData!['profileUrl'].toString().isNotEmpty)
                           ? NetworkImage(userData['profileUrl'])
                           : null,
-                      child: (userData?['profileUrl'] == null || userData!['profileUrl'].toString().isEmpty)
-                          ? const Icon(Icons.person, size: 60, color: Color(0xFF427AB5))
+                      child:
+                          (userData?['profileUrl'] == null ||
+                              userData!['profileUrl'].toString().isEmpty)
+                          ? const Icon(
+                              Icons.person,
+                              size: 60,
+                              color: Color(0xFF427AB5),
+                            )
                           : null,
                     ),
                   ),
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  userData?['name'] ?? user?.displayName ?? "Pengguna",
+                  user?.displayName ?? "Pengguna",
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -70,26 +85,40 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
                 Text(
-                  userData?['email'] ?? user?.email ?? "email@belum_diatur.com",
+                  user?.email ?? "email@belum_diatur.com",
                   style: const TextStyle(color: Color(0xFF94A3B8)),
                 ),
                 const SizedBox(height: 12),
-                // 🆔 USER ID BADGE
+                //  USER ID BADGE
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 15,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF427AB5).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(30),
-                    border: Border.all(color: const Color(0xFF427AB5).withOpacity(0.2)),
+                    border: Border.all(
+                      color: const Color(0xFF427AB5).withOpacity(0.2),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.verified_user_rounded, color: Color(0xFF427AB5), size: 14),
+                      const Icon(
+                        Icons.verified_user_rounded,
+                        color: Color(0xFF427AB5),
+                        size: 14,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         "ID: $userIdCode",
-                        style: const TextStyle(color: Color(0xFF427AB5), fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1),
+                        style: const TextStyle(
+                          color: Color(0xFF427AB5),
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12,
+                          letterSpacing: 1,
+                        ),
                       ),
                     ],
                   ),
@@ -101,36 +130,56 @@ class _ProfilePageState extends State<ProfilePage> {
                   title: "Informasi Akun",
                   items: [
                     _profileItem(
-                      Icons.badge_outlined, 
-                      "ID Pengguna", 
+                      Icons.badge_outlined,
+                      "ID Pengguna",
                       userIdCode,
                       isAction: true,
                       actionIcon: Icons.copy_rounded,
                       onTap: () {
                         Clipboard.setData(ClipboardData(text: userIdCode));
-                        CustomNotification.showSuccess(context, "ID Pengguna berhasil disalin!");
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: const [
+                                Icon(
+                                  Icons.check_circle_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 10),
+                                Text("ID Pengguna berhasil disalin!"),
+                              ],
+                            ),
+                            backgroundColor: const Color(0xFF427AB5),
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        );
                       },
                     ),
                     _profileItem(
-                      Icons.person_outline, 
-                      "Nama Lengkap", 
-                      userData?['name'] ?? user?.displayName ?? "Belum diatur",
+                      Icons.person_outline,
+                      "Nama Lengkap",
+                      user?.displayName ?? "Belum diatur",
                       isAction: true,
-                      onTap: () => _showEditNameDialog(userData?['name'] ?? user?.displayName ?? ""),
+                      onTap: () => _showEditNameDialog(user?.displayName ?? ""),
                     ),
                     _profileItem(
-                      Icons.email_outlined, 
-                      "Email", 
-                      userData?['email'] ?? user?.email ?? "Belum diatur",
+                      Icons.email_outlined,
+                      "Email",
+                      user?.email ?? "Belum diatur",
                       isAction: true,
-                      onTap: () => _showEditEmailDialog(userData?['email'] ?? user?.email ?? ""),
+                      onTap: () => _showEditEmailDialog(user?.email ?? ""),
                     ),
                     _profileItem(
-                      Icons.phone_outlined, 
-                      "Nomor HP", 
+                      Icons.phone_outlined,
+                      "Nomor HP",
                       phoneNumber,
                       isAction: true,
-                      onTap: () => _showEditPhoneDialog(userData?['phoneNumber'] ?? ""),
+                      onTap: () =>
+                          _showEditPhoneDialog(userData?['phoneNumber'] ?? ""),
                     ),
                   ],
                 ),
@@ -139,9 +188,9 @@ class _ProfilePageState extends State<ProfilePage> {
                   title: "Keamanan",
                   items: [
                     _profileItem(
-                      Icons.lock_outline, 
-                      "Ganti Password", 
-                      "", 
+                      Icons.lock_outline,
+                      "Ganti Password",
+                      "",
                       isAction: true,
                       onTap: _showChangePasswordDialog,
                     ),
@@ -151,8 +200,21 @@ class _ProfilePageState extends State<ProfilePage> {
                 _buildSection(
                   title: "Lainnya",
                   items: [
-                    _profileItem(Icons.description_outlined, "Syarat & Ketentuan", "", isAction: true, onTap: () => _showTermsModal(context)),
-                    _profileItem(Icons.logout, "Keluar", "", isAction: true, color: Colors.redAccent, onTap: () => _showLogoutDialog()),
+                    _profileItem(
+                      Icons.description_outlined,
+                      "Syarat & Ketentuan",
+                      "",
+                      isAction: true,
+                      onTap: () => _showTermsModal(context),
+                    ),
+                    _profileItem(
+                      Icons.logout,
+                      "Keluar",
+                      "",
+                      isAction: true,
+                      color: Colors.redAccent,
+                      onTap: () => _showLogoutDialog(),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 30),
@@ -160,7 +222,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
         );
-      }
+      },
     );
   }
 
@@ -186,7 +248,13 @@ class _ProfilePageState extends State<ProfilePage> {
           children: [
             Icon(Icons.logout_rounded, color: Colors.redAccent),
             SizedBox(width: 12),
-            Text("Keluar", style: TextStyle(color: Color(0xFF1E3C72), fontWeight: FontWeight.w900)),
+            Text(
+              "Keluar",
+              style: TextStyle(
+                color: Color(0xFF1E3C72),
+                fontWeight: FontWeight.w900,
+              ),
+            ),
           ],
         ),
         content: const Text(
@@ -197,7 +265,13 @@ class _ProfilePageState extends State<ProfilePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Batal", style: TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
+            child: const Text(
+              "Batal",
+              style: TextStyle(
+                color: Color(0xFF94A3B8),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -209,9 +283,14 @@ class _ProfilePageState extends State<ProfilePage> {
               foregroundColor: Colors.white,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-            child: const Text("Ya, Keluar", style: TextStyle(fontWeight: FontWeight.w900)),
+            child: const Text(
+              "Ya, Keluar",
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
           ),
         ],
       ),
@@ -237,13 +316,15 @@ class _ProfilePageState extends State<ProfilePage> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFF1E3C72).withOpacity(0.05)),
+            border: Border.all(
+              color: const Color(0xFF1E3C72).withOpacity(0.05),
+            ),
             boxShadow: [
               BoxShadow(
                 color: const Color(0xFF1E3C72).withOpacity(0.03),
                 blurRadius: 15,
                 offset: const Offset(0, 5),
-              )
+              ),
             ],
           ),
           child: Column(children: items),
@@ -253,40 +334,67 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _showEditNameDialog(String currentName) {
-    final TextEditingController nameEditController = TextEditingController(text: currentName);
+    final TextEditingController nameEditController = TextEditingController(
+      text: currentName,
+    );
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Edit Nama Lengkap", style: TextStyle(color: Color(0xFF1E3C72), fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Edit Nama Lengkap",
+          style: TextStyle(
+            color: Color(0xFF1E3C72),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         content: TextField(
           controller: nameEditController,
           style: const TextStyle(color: Color(0xFF1E3C72)),
           decoration: InputDecoration(
             hintText: "Masukkan nama lengkap",
             hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: const Color(0xFF1E3C72).withOpacity(0.3))),
-            focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF427AB5))),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: const Color(0xFF1E3C72).withOpacity(0.3),
+              ),
+            ),
+            focusedBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFF427AB5)),
+            ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Batal", style: TextStyle(color: Color(0xFF94A3B8))),
+            child: const Text(
+              "Batal",
+              style: TextStyle(color: Color(0xFF94A3B8)),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
               if (nameEditController.text.isNotEmpty && user != null) {
-                await AuthService().updateDisplayName(nameEditController.text.trim());
+                await AuthService().updateDisplayName(
+                  nameEditController.text.trim(),
+                );
                 if (context.mounted) Navigator.pop(context);
               }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF427AB5),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            child: const Text("Simpan", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text(
+              "Simpan",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -294,13 +402,18 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _showEditEmailDialog(String currentEmail) {
-    final TextEditingController emailEditController = TextEditingController(text: currentEmail);
+    final TextEditingController emailEditController = TextEditingController(
+      text: currentEmail,
+    );
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Edit Email", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Edit Email",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         content: TextField(
           controller: emailEditController,
           keyboardType: TextInputType.emailAddress,
@@ -308,8 +421,12 @@ class _ProfilePageState extends State<ProfilePage> {
           decoration: InputDecoration(
             hintText: "Masukkan email baru",
             hintStyle: const TextStyle(color: Colors.white54),
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.3))),
-            focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF427AB5))),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+            ),
+            focusedBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFF427AB5)),
+            ),
           ),
         ),
         actions: [
@@ -321,27 +438,46 @@ class _ProfilePageState extends State<ProfilePage> {
             onPressed: () async {
               if (emailEditController.text.isNotEmpty && user != null) {
                 try {
-                  await AuthService().updateEmail(emailEditController.text.trim());
+                  await AuthService().updateEmail(
+                    emailEditController.text.trim(),
+                  );
                   if (context.mounted) {
                     Navigator.pop(context);
-                    CustomNotification.showSuccess(context, "Link verifikasi telah dikirim ke email baru.");
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          "Link verifikasi telah dikirim ke email baru.",
+                        ),
+                      ),
+                    );
                   }
                 } catch (e) {
                   if (context.mounted) {
                     String error = "Gagal memperbarui email";
                     if (e.toString().contains("requires-recent-login")) {
-                      error = "Keamanan: Silakan keluar dan masuk kembali sebelum ganti email.";
+                      error =
+                          "Keamanan: Silakan keluar dan masuk kembali sebelum ganti email.";
                     }
-                    CustomNotification.showError(context, error);
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(error)));
                   }
                 }
               }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF427AB5),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            child: const Text("Simpan", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text(
+              "Simpan",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -349,13 +485,18 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _showEditPhoneDialog(String currentPhone) {
-    final TextEditingController phoneEditController = TextEditingController(text: currentPhone);
+    final TextEditingController phoneEditController = TextEditingController(
+      text: currentPhone,
+    );
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Edit Nomor HP", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Edit Nomor HP",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         content: TextField(
           controller: phoneEditController,
           keyboardType: TextInputType.phone,
@@ -363,8 +504,12 @@ class _ProfilePageState extends State<ProfilePage> {
           decoration: InputDecoration(
             hintText: "Masukkan nomor baru",
             hintStyle: const TextStyle(color: Colors.white54),
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.3))),
-            focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF427AB5))),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+            ),
+            focusedBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFF427AB5)),
+            ),
           ),
         ),
         actions: [
@@ -383,9 +528,17 @@ class _ProfilePageState extends State<ProfilePage> {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF427AB5),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            child: const Text("Simpan", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text(
+              "Simpan",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -403,8 +556,13 @@ class _ProfilePageState extends State<ProfilePage> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF1E293B),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text("Ganti Password", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            "Ganti Password",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -416,11 +574,21 @@ class _ProfilePageState extends State<ProfilePage> {
                   labelText: "Password Baru",
                   labelStyle: const TextStyle(color: Colors.white54),
                   suffixIcon: IconButton(
-                    icon: Icon(obscureNew ? Icons.visibility_off : Icons.visibility, color: Colors.white54),
-                    onPressed: () => setDialogState(() => obscureNew = !obscureNew),
+                    icon: Icon(
+                      obscureNew ? Icons.visibility_off : Icons.visibility,
+                      color: Colors.white54,
+                    ),
+                    onPressed: () =>
+                        setDialogState(() => obscureNew = !obscureNew),
                   ),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.3))),
-                  focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF427AB5))),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(
+                      color: Colors.white.withOpacity(0.3),
+                    ),
+                  ),
+                  focusedBorder: const UnderlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFF427AB5)),
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -432,11 +600,21 @@ class _ProfilePageState extends State<ProfilePage> {
                   labelText: "Konfirmasi Password",
                   labelStyle: const TextStyle(color: Colors.white54),
                   suffixIcon: IconButton(
-                    icon: Icon(obscureConfirm ? Icons.visibility_off : Icons.visibility, color: Colors.white54),
-                    onPressed: () => setDialogState(() => obscureConfirm = !obscureConfirm),
+                    icon: Icon(
+                      obscureConfirm ? Icons.visibility_off : Icons.visibility,
+                      color: Colors.white54,
+                    ),
+                    onPressed: () =>
+                        setDialogState(() => obscureConfirm = !obscureConfirm),
                   ),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.3))),
-                  focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF427AB5))),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(
+                      color: Colors.white.withOpacity(0.3),
+                    ),
+                  ),
+                  focusedBorder: const UnderlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFF427AB5)),
+                  ),
                 ),
               ),
             ],
@@ -444,16 +622,24 @@ class _ProfilePageState extends State<ProfilePage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Batal", style: TextStyle(color: Colors.white54)),
+              child: const Text(
+                "Batal",
+                style: TextStyle(color: Colors.white54),
+              ),
             ),
             ElevatedButton(
               onPressed: () async {
-                if (newPassController.text.isEmpty || confirmPassController.text.isEmpty) {
-                  CustomNotification.showError(context, "Isi semua bidang");
+                if (newPassController.text.isEmpty ||
+                    confirmPassController.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Isi semua bidang")),
+                  );
                   return;
                 }
                 if (newPassController.text != confirmPassController.text) {
-                  CustomNotification.showError(context, "Password tidak cocok");
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Password tidak cocok")),
+                  );
                   return;
                 }
 
@@ -461,23 +647,38 @@ class _ProfilePageState extends State<ProfilePage> {
                   await AuthService().updatePassword(newPassController.text);
                   if (context.mounted) {
                     Navigator.pop(context);
-                    CustomNotification.showSuccess(context, "Password berhasil diperbarui");
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Password berhasil diperbarui"),
+                      ),
+                    );
                   }
                 } catch (e) {
                   if (context.mounted) {
                     String error = "Gagal memperbarui password";
                     if (e.toString().contains("requires-recent-login")) {
-                      error = "Keamanan: Silakan keluar dan masuk kembali sebelum ganti password.";
+                      error =
+                          "Keamanan: Silakan keluar dan masuk kembali sebelum ganti password.";
                     }
-                    CustomNotification.showError(context, error);
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(error)));
                   }
                 }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF427AB5),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-              child: const Text("Ganti", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text(
+                "Ganti",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),
@@ -485,8 +686,11 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _profileItem(IconData icon, String title, String value, {
-    bool isAction = false, 
+  Widget _profileItem(
+    IconData icon,
+    String title,
+    String value, {
+    bool isAction = false,
     Color color = const Color(0xFF2D3436),
     VoidCallback? onTap,
     IconData? actionIcon,
@@ -506,22 +710,32 @@ class _ProfilePageState extends State<ProfilePage> {
                 children: [
                   Text(
                     title,
-                    style: TextStyle(color: color.withOpacity(0.7), fontSize: 13),
+                    style: TextStyle(
+                      color: color.withOpacity(0.7),
+                      fontSize: 13,
+                    ),
                   ),
                   if (value.isNotEmpty)
                     Text(
                       value,
-                      style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 15),
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
                     ),
                 ],
               ),
             ),
             if (isAction)
-              Icon(actionIcon ?? Icons.arrow_forward_ios, color: color.withOpacity(0.5), size: 16),
+              Icon(
+                actionIcon ?? Icons.arrow_forward_ios,
+                color: color.withOpacity(0.5),
+                size: 16,
+              ),
           ],
         ),
       ),
     );
   }
 }
-

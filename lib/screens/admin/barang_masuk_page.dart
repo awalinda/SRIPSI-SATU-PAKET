@@ -30,11 +30,13 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
   final FocusNode _searchFocusNode = FocusNode();
 
   bool get isMobile => MediaQuery.of(context).size.width < 800;
+  late Stream<QuerySnapshot> _packagesStream;
 
   @override
   void initState() {
     super.initState();
     selectedFilter = widget.filter;
+    _packagesStream = FirebaseFirestore.instance.collection("packages_admin").orderBy("createdAt", descending: true).snapshots();
   }
 
   @override
@@ -532,7 +534,18 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Detail & Edit Paket", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text("Detail & Edit Paket", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close_rounded, color: Colors.grey),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 15),
                     
                     if (item["rejectionReason"] != null && item["userApprovalStatus"] != "approved")
@@ -613,8 +626,30 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                           ]
                         )
                       ),
-                    Text("No Resi: ${item["resi"]}", style: const TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 20),
+                    // Detail Inputan Awal
+                    Container(
+                      padding: const EdgeInsets.all(15),
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(color: Colors.grey.shade200)
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _rowDetail("No Resi", item["resi"] ?? "-"),
+                          _rowDetail("Nama User", item["nama"] ?? "-"),
+                          _rowDetail("ID User", item["userIdCode"] ?? "-"),
+                          _rowDetail("Berat", "${item["berat"] ?? 0} gram"),
+                          _rowDetail("Dimensi", "${item["dimensi"] ?? "-"} cm"),
+                          _rowDetail("Kategori", item["kategori"] ?? "-"),
+                          _rowDetail("Biaya", "Rp${item["biaya"] ?? 0}"),
+                          if (item["keterangan"] != null && item["keterangan"].toString().isNotEmpty)
+                            _rowDetail("Keterangan", item["keterangan"]),
+                        ],
+                      ),
+                    ),
                     const Text("Foto Paket Awal (Maksimal 3 Foto)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 8),
                     Row(
@@ -909,7 +944,7 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
           const SizedBox(height: 15),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection("packages_admin").orderBy("createdAt", descending: true).snapshots(),
+              stream: _packagesStream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
                 if (!snapshot.hasData) return const Center(child: Text("Data tidak tersedia"));
@@ -1168,6 +1203,21 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
     if (kategori == "Sedang") return Colors.orange.shade800;
     if (kategori == "Besar") return Colors.green.shade700;
     return Colors.grey.shade700;
+  }
+
+  Widget _rowDetail(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 100, child: Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13))),
+          const Text(":", style: TextStyle(color: Colors.grey, fontSize: 13)),
+          const SizedBox(width: 8),
+          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+        ],
+      ),
+    );
   }
 }
 

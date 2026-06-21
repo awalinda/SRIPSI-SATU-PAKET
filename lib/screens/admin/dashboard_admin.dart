@@ -605,7 +605,7 @@ class _DashboardAdminState extends State<DashboardAdmin> {
                 padding: const EdgeInsets.only(left: 35, bottom: 8),
                 child: Column(
                   children: [
-                    _subMenuItem("Semua Barang Masuk", "All", 0),
+                    _subMenuItem("Belum di Proses", "All", 0),
                     _subMenuItem("Request", "Request", badgeCountRequest),
                     _subMenuItem("Ditolak", "Ditolak", badgeCountDitolak),
                   ],

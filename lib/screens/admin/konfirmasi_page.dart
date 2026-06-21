@@ -24,11 +24,13 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
   late String selectedStatusFilter;
 
   bool get isMobile => MediaQuery.of(context).size.width < 800;
+  late Stream<QuerySnapshot> _ordersStream;
 
   @override
   void initState() {
     super.initState();
     selectedStatusFilter = widget.filter;
+    _ordersStream = OrderService.getAllOrdersStream();
   }
 
   @override
@@ -545,7 +547,7 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
           ),
           const SizedBox(height: 25),
           StreamBuilder<QuerySnapshot>(
-            stream: OrderService.getAllOrdersStream(),
+            stream: _ordersStream,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) return const Expanded(child: Center(child: CircularProgressIndicator()));
               if (snapshot.hasError) return const Expanded(child: Center(child: Text("Terjadi kesalahan data.")));

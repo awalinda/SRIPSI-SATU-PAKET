@@ -5,6 +5,7 @@ import '../../services/report_service.dart';
 import 'dart:convert';
 import 'dart:async';
 import '../../widgets/custom_notification.dart';
+import 'ulasan_page.dart';
 
 class BarangKeluarPage extends StatefulWidget {
   final String filter;
@@ -20,24 +21,25 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
   String _searchQuery = "";
   String selectedDateFilter = "Semua Waktu";
   late String selectedStatusFilter;
-  bool showOnlyReviewed = false;
   final FocusNode _searchFocusNode = FocusNode();
 
   bool get isMobile => MediaQuery.of(context).size.width < 800;
 
   StreamSubscription<QuerySnapshot>? _pengirimanSub;
   final Set<String> _knownReviewIds = {};
+  late Stream<QuerySnapshot> _pengirimanStream;
 
   @override
   void initState() {
     super.initState();
     selectedStatusFilter = widget.filter;
+    _pengirimanStream = OrderService.getPengirimanStream();
     
     // 🔥 Auto update status jika lewat 3 hari
     OrderService.checkAndAutoUpdateSelesai();
 
     // Listen for new reviews
-    _pengirimanSub = OrderService.getPengirimanStream().listen((snapshot) {
+    _pengirimanSub = _pengirimanStream.listen((snapshot) {
       if (!mounted) return;
       for (var change in snapshot.docChanges) {
         if (change.type == DocumentChangeType.modified) {
@@ -328,37 +330,6 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
                   ),
                 ),
               ),
-              InkWell(
-                onTap: () {
-                  setState(() {
-                    showOnlyReviewed = !showOnlyReviewed;
-                  });
-                },
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: showOnlyReviewed ? Colors.orange : Colors.orange.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: showOnlyReviewed ? Colors.orange : Colors.orange.shade200),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.star_rounded, size: 16, color: showOnlyReviewed ? Colors.white : Colors.orange.shade700),
-                      const SizedBox(width: 8),
-                      Text(
-                        "Ulasan",
-                        style: TextStyle(
-                          fontSize: 13, 
-                          color: showOnlyReviewed ? Colors.white : Colors.orange.shade900, 
-                          fontWeight: FontWeight.bold
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             ],
           ),
 
@@ -367,7 +338,7 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
           // 🔥 CONTENT (GRID BOXES)
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: OrderService.getPengirimanStream(),
+              stream: _pengirimanStream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -408,15 +379,10 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
                     }
                   }
 
-                  bool matchesUlasan = true;
-                  if (showOnlyReviewed) {
-                    matchesUlasan = data["rating"] != null;
-                  }
-
                   return (resi.contains(_searchQuery) || 
                          resiAsal.contains(_searchQuery) || 
                          user.contains(_searchQuery) || 
-                         uidCode.contains(_searchQuery)) && matchesDate && matchesStatus && matchesUlasan;
+                         uidCode.contains(_searchQuery)) && matchesDate && matchesStatus;
                 }).toList();
 
                 docs.sort((a, b) {
@@ -547,7 +513,15 @@ class _BarangKeluarPageState extends State<BarangKeluarPage> {
                                   alignment: Alignment.centerRight,
                                   child: InkWell(
                                     onTap: () {
-                                      _showReviewPopup(item);
+                                      Navigator.push(context, MaterialPageRoute(builder: (context) => Scaffold(
+                                        appBar: AppBar(
+                                          title: const Text("Ulasan Pelanggan", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                                          backgroundColor: const Color(0xFF427AB5),
+                                          iconTheme: const IconThemeData(color: Colors.white),
+                                        ),
+                                        backgroundColor: Colors.white,
+                                        body: const SafeArea(child: UlasanPage()),
+                                      )));
                                     },
                                     borderRadius: BorderRadius.circular(8),
                                     child: Container(

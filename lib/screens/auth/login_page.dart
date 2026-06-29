@@ -233,11 +233,51 @@ class _LoginPageState extends State<LoginPage> {
                                                         .getUserRole(user.uid);
 
                                                 if (updatedUser != null && !updatedUser.emailVerified && role != 'admin') {
+                                                  if (context.mounted) {
+                                                    await showDialog(
+                                                      context: context,
+                                                      builder: (context) => AlertDialog(
+                                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                                        title: const Row(
+                                                          children: [
+                                                            Icon(Icons.mark_email_unread_rounded, color: Colors.orange),
+                                                            SizedBox(width: 10),
+                                                            Text("Verifikasi Email"),
+                                                          ],
+                                                        ),
+                                                        content: const Text("Akun Anda belum diverifikasi. Silakan cek email Anda (termasuk folder Spam). Jika belum menerima, Anda bisa mengirim ulang tautan verifikasi."),
+                                                        actions: [
+                                                          TextButton(
+                                                            onPressed: () async {
+                                                              try {
+                                                                await updatedUser.sendEmailVerification();
+                                                                if (context.mounted) {
+                                                                  Navigator.pop(context);
+                                                                  CustomNotification.showSuccess(context, "Email verifikasi telah dikirim ulang!");
+                                                                }
+                                                              } catch (e) {
+                                                                if (context.mounted) {
+                                                                  Navigator.pop(context);
+                                                                  CustomNotification.showError(context, "Gagal mengirim ulang: Terlalu banyak percobaan, coba lagi nanti.");
+                                                                }
+                                                              }
+                                                            },
+                                                            child: const Text("Kirim Ulang", style: TextStyle(fontWeight: FontWeight.bold)),
+                                                          ),
+                                                          ElevatedButton(
+                                                            style: ElevatedButton.styleFrom(
+                                                              backgroundColor: const Color(0xFF427AB5),
+                                                              foregroundColor: Colors.white,
+                                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                                            ),
+                                                            onPressed: () => Navigator.pop(context),
+                                                            child: const Text("Mengerti"),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    );
+                                                  }
                                                   await AuthService().signOut();
-                                                  CustomNotification.showError(
-                                                    context,
-                                                    "Silahkan verifikasi email terlebih dahulu.",
-                                                  );
                                                   setState(() => _isLoading = false);
                                                   return;
                                                 }

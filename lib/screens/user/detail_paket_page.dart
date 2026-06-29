@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:satupaket/utils/image_helper.dart';
 import '../../services/package_service.dart';
 import '../../services/layanan_service.dart';
 import '../../widgets/custom_notification.dart';
@@ -328,12 +329,19 @@ class _DetailPaketPageState extends State<DetailPaketPage> {
                                   (paketData["images"] as List).isNotEmpty
                               ? ClipRRect(
                                   borderRadius: BorderRadius.circular(15),
-                                  child: Image.memory(
-                                    base64Decode((paketData["images"] as List).first.toString()),
-                                    fit: BoxFit.cover,
-                                    width: 60,
-                                    height: 60,
-                                  ),
+                                  child: ((paketData["images"] as List).first as String).startsWith('http')
+                                    ? Image.network(
+                                        ImageHelper.getCorsUrl((paketData["images"] as List).first as String),
+                                        fit: BoxFit.cover,
+                                        width: 60,
+                                        height: 60,
+                                      )
+                                    : Image.memory(
+                                        base64Decode((paketData["images"] as List).first.toString()),
+                                        fit: BoxFit.cover,
+                                        width: 60,
+                                        height: 60,
+                                      ),
                                 )
                               : const Icon(
                                   Icons.inventory_2_outlined,
@@ -961,7 +969,7 @@ class _DetailPaketPageState extends State<DetailPaketPage> {
                 context: context,
                 builder: (_) => Dialog(
                   child: InteractiveViewer(
-                    child: Image.memory(base64Decode(img), fit: BoxFit.contain),
+                    child: img.toString().startsWith('http') ? Image.network(ImageHelper.getCorsUrl(img), fit: BoxFit.contain) : Image.memory(base64Decode(img), fit: BoxFit.contain),
                   ),
                 ),
               );
@@ -981,7 +989,7 @@ class _DetailPaketPageState extends State<DetailPaketPage> {
                   ),
                 ],
                 image: DecorationImage(
-                  image: MemoryImage(base64Decode(img)),
+                  image: img.toString().startsWith('http') ? NetworkImage(ImageHelper.getCorsUrl(img)) as ImageProvider : MemoryImage(base64Decode(img)),
                   fit: BoxFit.cover,
                 ),
               ),

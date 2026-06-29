@@ -9,6 +9,13 @@
           "satupaket"
         ]
       }
+    },
+    "mending-gabung": {
+      "hosting": {
+        "main": [
+          "mending-gabung"
+        ]
+      }
     }
   },
   "etags": {}

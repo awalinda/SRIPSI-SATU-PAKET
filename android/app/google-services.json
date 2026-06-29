@@ -1,26 +1,43 @@
 {
   "project_info": {
-    "project_number": "4331865556",
-    "project_id": "satupaket-a7b4c",
-    "storage_bucket": "satupaket-a7b4c.firebasestorage.app"
+    "project_number": "441230573231",
+    "project_id": "mending-gabung",
+    "storage_bucket": "mending-gabung.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:4331865556:android:d8877cc43676ada1024241",
+        "mobilesdk_app_id": "1:441230573231:android:d995563921557be8fe1e5a",
         "android_client_info": {
           "package_name": "com.example.satupaket"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "441230573231-h88dqn0nifpceidj2bv3kc8gjpfppde6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyBMhkv_3MTk5zmtHB9jiE9PbwLdtNi30n0"
+          "current_key": "AIzaSyBtSi2CuJa07GlkujzdPq8B1cxFIKW8_uA"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "441230573231-h88dqn0nifpceidj2bv3kc8gjpfppde6.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "441230573231-bandqfmu4r5a6388ocsf7753o1p2iob5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.satupaket"
+              }
+            }
+          ]
         }
       }
     }

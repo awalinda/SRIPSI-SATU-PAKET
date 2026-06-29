@@ -5,6 +5,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../../services/biaya_service.dart';
 import '../../widgets/custom_notification.dart';
+import 'package:satupaket/utils/image_helper.dart';
+import 'dart:typed_data';
 
 class BiayaPage extends StatefulWidget {
   const BiayaPage({super.key});
@@ -16,39 +18,7 @@ class BiayaPage extends StatefulWidget {
 class _BiayaPageState extends State<BiayaPage> {
   final BiayaService _biayaService = BiayaService();
   final ImagePicker _picker = ImagePicker();
-  bool _isUploadingQRIS = false;
-
   bool get isMobile => MediaQuery.of(context).size.width < 800;
-
-  Future<void> _uploadQRIS(Map<String, dynamic>? currentData) async {
-    try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      if (image == null) return;
-
-      setState(() => _isUploadingQRIS = true);
-
-      // 🔥 Upload ke Firebase Storage
-      final storageRef = FirebaseStorage.instance.ref().child('settings/qris_${DateTime.now().millisecondsSinceEpoch}.png');
-      
-      final bytes = await image.readAsBytes();
-      await storageRef.putData(bytes, SettableMetadata(contentType: 'image/png'));
-      final downloadUrl = await storageRef.getDownloadURL();
-
-      // 🔥 Update Firestore
-      await _biayaService.updatePaymentMethod({
-        ...(currentData ?? {}),
-        "qrisUrl": downloadUrl,
-      });
-
-      if (!mounted) return;
-      CustomNotification.showSuccess(context, "QRIS berhasil diperbarui!");
-    } catch (e) {
-      if (!mounted) return;
-      CustomNotification.showError(context, "Gagal upload QRIS: $e");
-    } finally {
-      setState(() => _isUploadingQRIS = false);
-    }
-  }
 
   // ================= POPUP FORM EDIT HARGA =================
   void showEditBiaya(Map<String, dynamic>? currentData) {
@@ -458,7 +428,7 @@ class _BiayaPageState extends State<BiayaPage> {
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Image.network(
-                payData!["qrisUrl"],
+                ImageHelper.getCorsUrl(payData!["qrisUrl"]),
                 height: 120,
                 width: double.infinity,
                 fit: BoxFit.cover,
@@ -556,96 +526,143 @@ class _BiayaPageState extends State<BiayaPage> {
     showDialog(
       context: context,
       builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-          child: Container(
-            width: 450,
-            padding: const EdgeInsets.all(30),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Update Rekening Pembayaran",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 25),
+        Uint8List? selectedImageBytes;
+        String? existingQrisUrl = currentData?["qrisUrl"];
+        bool isSaving = false;
 
-                _inputGeneral(bankName, "Nama Bank (Contoh: BCA / BRI)", Icons.account_balance_rounded),
-                _inputGeneral(accountNumber, "Nomor Rekening", Icons.credit_card_rounded, keyboard: TextInputType.number),
-                _inputGeneral(accountHolder, "Atas Nama Pemilik", Icons.person_pin_rounded),
+        return StatefulBuilder(builder: (context, setStateDialog) {
+          Future<void> pickQris() async {
+            try {
+              final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+              if (image != null) {
+                final bytes = await image.readAsBytes();
+                setStateDialog(() {
+                  selectedImageBytes = bytes;
+                });
+              }
+            } catch (e) {
+              debugPrint("Error picking QRIS: $e");
+            }
+          }
 
-                const SizedBox(height: 10),
-                const Text("QRIS Code", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
-                const SizedBox(height: 10),
-                
-                InkWell(
-                  onTap: _isUploadingQRIS ? null : () => _uploadQRIS(currentData),
-                  borderRadius: BorderRadius.circular(15),
-                  child: Container(
-                    height: 120,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(15),
-                      border: Border.all(color: Colors.grey.shade200, style: BorderStyle.solid),
-                    ),
-                    child: _isUploadingQRIS 
-                      ? const Center(child: CircularProgressIndicator())
-                      : currentData?["qrisUrl"] != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(15),
-                            child: Image.network(currentData!["qrisUrl"], fit: BoxFit.cover),
-                          )
-                        : const Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.cloud_upload_outlined, color: Color(0xFF427AB5), size: 30),
-                              SizedBox(height: 8),
-                              Text("Klik untuk Upload QRIS", style: TextStyle(fontSize: 12, color: Color(0xFF427AB5), fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                  ),
-                ),
-
-                const SizedBox(height: 25),
-
-                Row(
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+            child: Container(
+              width: 450,
+              padding: const EdgeInsets.all(30),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text("Batal", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-                      ),
+                    const Text(
+                      "Update Rekening Pembayaran",
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
                     ),
-                    const SizedBox(width: 15),
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF427AB5),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    const SizedBox(height: 25),
+
+                    _inputGeneral(bankName, "Nama Bank (Contoh: BCA / BRI)", Icons.account_balance_rounded),
+                    _inputGeneral(accountNumber, "Nomor Rekening", Icons.credit_card_rounded, keyboard: TextInputType.number),
+                    _inputGeneral(accountHolder, "Atas Nama Pemilik", Icons.person_pin_rounded),
+
+                    const SizedBox(height: 10),
+                    const Text("QRIS Code", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
+                    const SizedBox(height: 10),
+                    
+                    InkWell(
+                      onTap: isSaving ? null : () => pickQris(),
+                      borderRadius: BorderRadius.circular(15),
+                      child: Container(
+                        height: 120,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(15),
+                          border: Border.all(color: Colors.grey.shade200, style: BorderStyle.solid),
                         ),
-                        onPressed: () async {
-                          await _biayaService.updatePaymentMethod({
-                            "bankName": bankName.text,
-                            "accountNumber": accountNumber.text,
-                            "accountHolder": accountHolder.text,
-                          });
-                          if (!mounted) return;
-                          Navigator.pop(context);
-                          CustomNotification.showSuccess(context, "Rekening berhasil diperbarui!");
-                        },
-                        child: const Text("Simpan Rekening", style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: selectedImageBytes != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(15),
+                                child: Image.memory(selectedImageBytes!, fit: BoxFit.cover),
+                              )
+                            : existingQrisUrl != null
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(15),
+                                  child: Image.network(ImageHelper.getCorsUrl(existingQrisUrl!), fit: BoxFit.cover),
+                                )
+                              : const Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.cloud_upload_outlined, color: Color(0xFF427AB5), size: 30),
+                                    SizedBox(height: 8),
+                                    Text("Klik untuk Upload QRIS", style: TextStyle(fontSize: 12, color: Color(0xFF427AB5), fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
                       ),
                     ),
+
+                    const SizedBox(height: 25),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text("Batal", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF427AB5),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                            ),
+                            onPressed: isSaving ? null : () async {
+                              setStateDialog(() => isSaving = true);
+                              
+                              try {
+                                String? finalQrisUrl = existingQrisUrl;
+                                
+                                if (selectedImageBytes != null) {
+                                  final storageRef = FirebaseStorage.instance.ref().child('settings/qris_${DateTime.now().millisecondsSinceEpoch}.png');
+                                  await storageRef.putData(selectedImageBytes!, SettableMetadata(contentType: 'image/png'));
+                                  finalQrisUrl = await storageRef.getDownloadURL();
+                                }
+
+                                await _biayaService.updatePaymentMethod({
+                                  "bankName": bankName.text,
+                                  "accountNumber": accountNumber.text,
+                                  "accountHolder": accountHolder.text,
+                                  "qrisUrl": finalQrisUrl,
+                                });
+                                
+                                if (mounted) {
+                                  Navigator.pop(context);
+                                  CustomNotification.showSuccess(context, "Rekening berhasil diperbarui!");
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  setStateDialog(() => isSaving = false);
+                                  CustomNotification.showError(context, "Terjadi kesalahan: $e");
+                                }
+                              }
+                            },
+                            child: isSaving 
+                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              : const Text("Simpan Rekening", style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ],
+                    )
                   ],
-                )
-              ],
+                ),
+              ),
             ),
-          ),
-        );
+          );
+        });
       },
     );
   }
@@ -684,7 +701,7 @@ class _BiayaPageState extends State<BiayaPage> {
             ),
             ClipRRect(
               borderRadius: BorderRadius.circular(20),
-              child: Image.network(url, fit: BoxFit.contain),
+              child: Image.network(ImageHelper.getCorsUrl(url), fit: BoxFit.contain),
             ),
           ],
         ),

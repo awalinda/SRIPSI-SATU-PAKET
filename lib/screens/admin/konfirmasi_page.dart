@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import '../../widgets/custom_notification.dart';
+import 'package:satupaket/utils/image_helper.dart';
 
 class KonfirmasiPage extends StatefulWidget {
   final String filter;
@@ -295,9 +296,14 @@ class _KonfirmasiPageState extends State<KonfirmasiPage> {
   Widget _buildProofImage(Map<String, dynamic> item) {
     try {
       if (item["buktiPembayaran"] != null && item["buktiPembayaran"].toString().isNotEmpty) {
-        return Image.memory(base64Decode(item["buktiPembayaran"]), height: 350, width: double.infinity, fit: BoxFit.contain);
+        String bukti = item["buktiPembayaran"];
+        if (bukti.startsWith('http')) {
+          return Image.network(ImageHelper.getCorsUrl(bukti), height: 350, width: double.infinity, fit: BoxFit.contain);
+        } else {
+          return Image.memory(base64Decode(bukti), height: 350, width: double.infinity, fit: BoxFit.contain);
+        }
       } else if (item["buktiPembayaranUrl"] != null) {
-        return Image.network(item["buktiPembayaranUrl"], height: 350, width: double.infinity, fit: BoxFit.contain);
+        return Image.network(ImageHelper.getCorsUrl(item["buktiPembayaranUrl"]), height: 350, width: double.infinity, fit: BoxFit.contain);
       }
     } catch (e) {
       return Container(height: 200, color: Colors.grey.shade100, child: const Center(child: Icon(Icons.broken_image_outlined, color: Colors.grey)));
@@ -896,7 +902,7 @@ class _PackageItemWidget extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
                 image: DecorationImage(
-                  image: MemoryImage(base64Decode(imgs[imgIdx])), 
+                  image: imgs[imgIdx].toString().startsWith('http') ? NetworkImage(ImageHelper.getCorsUrl(imgs[imgIdx])) as ImageProvider : MemoryImage(base64Decode(imgs[imgIdx])), 
                   fit: BoxFit.cover
                 ),
               ),

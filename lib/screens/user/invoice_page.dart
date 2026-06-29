@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'package:satupaket/utils/image_helper.dart';
 
 class InvoicePage extends StatelessWidget {
   final List<dynamic> paket;
@@ -172,12 +173,19 @@ class InvoicePage extends StatelessWidget {
                       const SizedBox(height: 15),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(15),
-                        child: Image.memory(
-                          base64Decode(reviewImageBase64!),
-                          width: double.infinity,
-                          height: 150,
-                          fit: BoxFit.cover,
-                        ),
+                        child: reviewImageBase64!.startsWith('http') 
+                          ? Image.network(
+                              ImageHelper.getCorsUrl(reviewImageBase64!),
+                              width: double.infinity,
+                              height: 150,
+                              fit: BoxFit.cover,
+                            )
+                          : Image.memory(
+                              base64Decode(reviewImageBase64!),
+                              width: double.infinity,
+                              height: 150,
+                              fit: BoxFit.cover,
+                            ),
                       ),
                     ]
                   ],

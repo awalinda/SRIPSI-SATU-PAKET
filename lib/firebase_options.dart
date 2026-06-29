@@ -50,20 +50,20 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyB_LcHPsoxegK0QSWpA5juMS7gi2BYhvCE',
-    appId: '1:4331865556:web:832d1329c3d4dd52024241',
-    messagingSenderId: '4331865556',
-    projectId: 'satupaket-a7b4c',
-    authDomain: 'satupaket-a7b4c.firebaseapp.com',
-    storageBucket: 'satupaket-a7b4c.firebasestorage.app',
-    measurementId: 'G-N59634TH4F',
+    apiKey: 'AIzaSyDeK6jIdpkEaE5Etq5zMKZ2lIsiTTw1-PM',
+    appId: '1:441230573231:web:a91dc5c5cc91f6aefe1e5a',
+    messagingSenderId: '441230573231',
+    projectId: 'mending-gabung',
+    authDomain: 'mending-gabung.firebaseapp.com',
+    storageBucket: 'mending-gabung.firebasestorage.app',
+    measurementId: 'G-KC6GB1KJ98',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBMhkv_3MTk5zmtHB9jiE9PbwLdtNi30n0',
-    appId: '1:4331865556:android:d8877cc43676ada1024241',
-    messagingSenderId: '4331865556',
-    projectId: 'satupaket-a7b4c',
-    storageBucket: 'satupaket-a7b4c.firebasestorage.app',
+    apiKey: 'AIzaSyBtSi2CuJa07GlkujzdPq8B1cxFIKW8_uA',
+    appId: '1:441230573231:android:d995563921557be8fe1e5a',
+    messagingSenderId: '441230573231',
+    projectId: 'mending-gabung',
+    storageBucket: 'mending-gabung.firebasestorage.app',
   );
 }

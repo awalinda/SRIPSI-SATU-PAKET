@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
@@ -6,6 +7,9 @@ import '../../services/order_service.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/custom_notification.dart';
 import 'invoice_page.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '../../services/package_service.dart';
 
 class KonsolidasiStatusPage extends StatefulWidget {
   const KonsolidasiStatusPage({super.key});
@@ -19,7 +23,8 @@ class _KonsolidasiStatusPageState extends State<KonsolidasiStatusPage> {
     double rating = 0.0;
     TextEditingController reviewController = TextEditingController();
     bool isSubmitting = false;
-    String? base64Image;
+    XFile? reviewImage;
+    Uint8List? reviewImageBytes;
 
     showDialog(
       context: context,
@@ -36,7 +41,10 @@ class _KonsolidasiStatusPageState extends State<KonsolidasiStatusPage> {
                   final img = await picker.pickImage(source: ImageSource.gallery, imageQuality: 50, maxWidth: 800, maxHeight: 800);
                   if (img != null) {
                     final bytes = await img.readAsBytes();
-                    setStateDialog(() => base64Image = base64Encode(bytes));
+                    setStateDialog(() {
+                      reviewImage = img;
+                      reviewImageBytes = bytes;
+                    });
                   }
                 } catch (e) {
                   debugPrint("Error picking image: $e");
@@ -115,23 +123,28 @@ class _KonsolidasiStatusPageState extends State<KonsolidasiStatusPage> {
                             borderRadius: BorderRadius.circular(15),
                             border: Border.all(color: Colors.grey.shade300, width: 1.5),
                           ),
-                          child: base64Image != null
+                          child: reviewImage != null
                               ? Stack(
                                   children: [
                                     ClipRRect(
                                       borderRadius: BorderRadius.circular(13),
-                                      child: Image.memory(
-                                        base64Decode(base64Image!),
-                                        fit: BoxFit.cover,
-                                        width: double.infinity,
-                                        height: double.infinity,
-                                      ),
+                                      child: reviewImageBytes != null 
+                                          ? Image.memory(
+                                              reviewImageBytes!,
+                                              fit: BoxFit.cover,
+                                              width: double.infinity,
+                                              height: double.infinity,
+                                            )
+                                          : const SizedBox(),
                                     ),
                                     Positioned(
                                       top: 8,
                                       right: 8,
                                       child: GestureDetector(
-                                        onTap: () => setStateDialog(() => base64Image = null),
+                                        onTap: () => setStateDialog(() {
+                                          reviewImage = null;
+                                          reviewImageBytes = null;
+                                        }),
                                         child: Container(
                                           decoration: BoxDecoration(
                                             color: Colors.black.withOpacity(0.6),
@@ -176,7 +189,11 @@ class _KonsolidasiStatusPageState extends State<KonsolidasiStatusPage> {
                                     }
                                     setStateDialog(() => isSubmitting = true);
                                     try {
-                                      await OrderService.submitReview(orderId, rating, reviewController.text, reviewImageBase64: base64Image);
+                                      String? imageUrl;
+                                      if (reviewImage != null) {
+                                        imageUrl = await PackageService().uploadImageToStorage(reviewImage!);
+                                      }
+                                      await OrderService.submitReview(orderId, rating, reviewController.text, reviewImageBase64: imageUrl);
                                       if (context.mounted) {
                                         Navigator.pop(context);
                                         CustomNotification.showSuccess(context, "Terima kasih atas ulasan Anda!");

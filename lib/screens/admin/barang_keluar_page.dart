@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'dart:async';
 import '../../widgets/custom_notification.dart';
 import 'ulasan_page.dart';
+import 'package:satupaket/utils/image_helper.dart';
 
 class BarangKeluarPage extends StatefulWidget {
   final String filter;
@@ -887,7 +888,7 @@ class _PackageItemWidget extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
                 image: DecorationImage(
-                  image: MemoryImage(base64Decode(imgs[imgIdx])), 
+                  image: imgs[imgIdx].toString().startsWith('http') ? NetworkImage(ImageHelper.getCorsUrl(imgs[imgIdx])) as ImageProvider : MemoryImage(base64Decode(imgs[imgIdx])), 
                   fit: BoxFit.cover
                 ),
               ),

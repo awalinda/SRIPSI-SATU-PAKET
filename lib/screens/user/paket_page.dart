@@ -6,6 +6,7 @@ import '../../services/auth_service.dart';
 import 'package:intl/intl.dart';
 import 'konsolidasi_page.dart';
 import 'detail_paket_page.dart';
+import 'package:satupaket/utils/image_helper.dart';
 
 class PaketPage extends StatefulWidget {
   const PaketPage({super.key});
@@ -249,10 +250,15 @@ class _PaketPageState extends State<PaketPage> {
                                         child: (paket["images"] != null && (paket["images"] as List).isNotEmpty)
                                             ? ClipRRect(
                                                 borderRadius: BorderRadius.circular(10),
-                                                child: Image.memory(
-                                                  base64Decode((paket["images"] as List).first),
-                                                  fit: BoxFit.cover,
-                                                ),
+                                                child: ((paket["images"] as List).first as String).startsWith('http')
+                                                  ? Image.network(
+                                                      ImageHelper.getCorsUrl((paket["images"] as List).first),
+                                                      fit: BoxFit.cover,
+                                                    )
+                                                  : Image.memory(
+                                                      base64Decode((paket["images"] as List).first),
+                                                      fit: BoxFit.cover,
+                                                    ),
                                               )
                                             : Icon(
                                                 Icons.inventory_2_outlined,

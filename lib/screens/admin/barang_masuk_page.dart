@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:satupaket/utils/image_helper.dart';
 import '../../services/package_service.dart';
 import '../../services/report_service.dart';
 import '../../services/order_service.dart';
@@ -176,6 +177,7 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
     String kategori = editItem?["kategori"] ?? "-";
     DateTime? tanggal = DateTime.now();
     List<String> base64Images = editItem != null ? List<String>.from(editItem["images"] ?? []) : [];
+    String? videoUrl = editItem?["videoUrl"];
     bool isSaving = false;
 
     showDialog(
@@ -217,14 +219,61 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
               );
 
               if (image != null) {
-                final bytes = await image.readAsBytes();
-                String base64 = base64Encode(bytes);
-                setStateDialog(() {
-                  base64Images.add(base64);
-                });
+                int size = await image.length();
+                if (size > 10 * 1024 * 1024) {
+                  if (mounted) CustomNotification.showError(context, "Foto melebihi batas maksimal 10 MB.");
+                  return;
+                }
+                setStateDialog(() => isSaving = true);
+                String? url = await _packageService.uploadImageToStorage(image);
+                setStateDialog(() => isSaving = false);
+                if (url != null) {
+                  setStateDialog(() {
+                    base64Images.add(url);
+                  });
+                } else {
+                  if (mounted) CustomNotification.showError(context, "Gagal upload gambar");
+                }
               }
             } catch (e) {
+              setStateDialog(() => isSaving = false);
               debugPrint("Error picking image: $e");
+            }
+          }
+
+          Future<void> pickVideo() async {
+            if (videoUrl != null) {
+              CustomNotification.showWarning(context, "Maksimal 1 video");
+              return;
+            }
+
+            try {
+              final ImagePicker picker = ImagePicker();
+              final XFile? video = await picker.pickVideo(
+                source: ImageSource.gallery,
+                maxDuration: const Duration(minutes: 5),
+              );
+
+              if (video != null) {
+                int size = await video.length();
+                if (size > 1024 * 1024 * 1024) {
+                  if (mounted) CustomNotification.showError(context, "Video melebihi batas maksimal 1 GB.");
+                  return;
+                }
+                setStateDialog(() => isSaving = true);
+                String? url = await _packageService.uploadVideoToStorage(video);
+                setStateDialog(() => isSaving = false);
+                if (url != null) {
+                  setStateDialog(() {
+                    videoUrl = url;
+                  });
+                } else {
+                  if (mounted) CustomNotification.showError(context, "Gagal upload video");
+                }
+              }
+            } catch (e) {
+              setStateDialog(() => isSaving = false);
+              debugPrint("Error picking video: $e");
             }
           }
 
@@ -366,22 +415,35 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                     ),
 
                     const SizedBox(height: 20),
-                    const Text("Foto Paket (Maksimal 3 Foto)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text("Foto & Video Paket", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 4),
+                    const Text("* Tanda bintang artinya kolom wajib diisi", style: TextStyle(fontSize: 10, fontStyle: FontStyle.italic, color: Colors.grey)),
                     const SizedBox(height: 8),
-                    Row(
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
                       children: [
                         ...base64Images.asMap().entries.map((entry) {
                           int idx = entry.key;
                           String img = entry.value;
                           return Stack(
                             children: [
-                              Container(margin: const EdgeInsets.only(right: 10), width: 70, height: 70, decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), image: DecorationImage(image: MemoryImage(base64Decode(img)), fit: BoxFit.cover))),
-                              Positioned(top: 0, right: 10, child: GestureDetector(onTap: () => setStateDialog(() => base64Images.removeAt(idx)), child: Container(decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle), child: const Icon(Icons.close, color: Colors.white, size: 16)))),
+                              Container(width: 70, height: 70, decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), image: DecorationImage(image: img.startsWith('http') ? NetworkImage(ImageHelper.getCorsUrl(img)) as ImageProvider : MemoryImage(base64Decode(img)), fit: BoxFit.cover))),
+                              Positioned(top: 0, right: 0, child: GestureDetector(onTap: () => setStateDialog(() => base64Images.removeAt(idx)), child: Container(decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle), child: const Icon(Icons.close, color: Colors.white, size: 16)))),
                             ],
                           );
                         }),
                         if (base64Images.length < 3)
                           GestureDetector(onTap: () => pickImage(), child: Container(width: 70, height: 70, decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(10), color: Colors.grey.shade50), child: const Icon(Icons.add_a_photo_outlined, color: Colors.grey))),
+                        if (videoUrl != null)
+                          Stack(
+                            children: [
+                              Container(width: 70, height: 70, decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: Colors.black87), child: const Icon(Icons.play_circle_outline, color: Colors.white, size: 30)),
+                              Positioned(top: 0, right: 0, child: GestureDetector(onTap: () => setStateDialog(() => videoUrl = null), child: Container(decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle), child: const Icon(Icons.close, color: Colors.white, size: 16)))),
+                            ],
+                          )
+                        else
+                          GestureDetector(onTap: () => pickVideo(), child: Container(width: 70, height: 70, decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(10), color: Colors.grey.shade50), child: const Icon(Icons.video_call_outlined, color: Colors.grey))),
                       ],
                     ),
 
@@ -439,6 +501,7 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                                   "tanggal": tanggal?.toString().split(" ")[0],
                                   "keterangan": keterangan.text,
                                   "images": base64Images,
+                                  if (videoUrl != null) "videoUrl": videoUrl,
                                   "userId": selectedUserUid,
                                   "biaya": OrderService.hitungBiayaJNE(
                                     beratGram: double.tryParse(berat.text) ?? 0,
@@ -510,17 +573,36 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
               final picker = ImagePicker();
               final img = await picker.pickImage(source: ImageSource.camera, imageQuality: 30, maxWidth: 600, maxHeight: 600);
               if (img != null) {
-                final bytes = await img.readAsBytes();
-                setStateDialog(() => targetList.add(base64Encode(bytes)));
+                int size = await img.length();
+                if (size > 10 * 1024 * 1024) {
+                  if (mounted) CustomNotification.showError(context, "Foto melebihi batas maksimal 10 MB.");
+                  return;
+                }
+                setStateDialog(() => isSaving = true);
+                String? url = await _packageService.uploadImageToStorage(img);
+                setStateDialog(() => isSaving = false);
+                if (url != null) {
+                  setStateDialog(() => targetList.add(url));
+                } else {
+                  if (mounted) CustomNotification.showError(context, "Gagal upload gambar");
+                }
               }
-            } catch (e) { debugPrint(e.toString()); }
+            } catch (e) { 
+              setStateDialog(() => isSaving = false);
+              debugPrint(e.toString()); 
+            }
           }
 
           Future<void> pickVideo() async {
             try {
               final picker = ImagePicker();
-              final vid = await picker.pickVideo(source: ImageSource.gallery);
+              final vid = await picker.pickVideo(source: ImageSource.gallery, maxDuration: const Duration(minutes: 5));
               if (vid != null) {
+                int size = await vid.length();
+                if (size > 1024 * 1024 * 1024) {
+                  if (mounted) CustomNotification.showError(context, "Video melebihi batas maksimal 1 GB.");
+                  return;
+                }
                 setStateDialog(() => selectedVideo = vid);
               }
             } catch (e) { debugPrint(e.toString()); }
@@ -656,7 +738,8 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                       children: [
                         ...base64Images.asMap().entries.map((entry) {
                           int idx = entry.key;
-                          return Stack(children: [Container(margin: const EdgeInsets.only(right: 10), width: 70, height: 70, decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), image: DecorationImage(image: MemoryImage(base64Decode(entry.value)), fit: BoxFit.cover))), Positioned(top: 0, right: 10, child: GestureDetector(onTap: () => setStateDialog(() => base64Images.removeAt(idx)), child: Container(decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle), child: const Icon(Icons.close, color: Colors.white, size: 16))))]);
+                          String img = entry.value;
+                          return Stack(children: [Container(margin: const EdgeInsets.only(right: 10), width: 70, height: 70, decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), image: DecorationImage(image: img.startsWith('http') ? NetworkImage(ImageHelper.getCorsUrl(img)) as ImageProvider : MemoryImage(base64Decode(img)), fit: BoxFit.cover))), Positioned(top: 0, right: 10, child: GestureDetector(onTap: () => setStateDialog(() => base64Images.removeAt(idx)), child: Container(decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle), child: const Icon(Icons.close, color: Colors.white, size: 16))))]);
                         }),
                         if (base64Images.length < 3) GestureDetector(onTap: () => pickImage(base64Images), child: Container(width: 70, height: 70, decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(10), color: Colors.grey.shade50), child: const Icon(Icons.add_a_photo_outlined, color: Colors.grey))),
                       ],
@@ -670,7 +753,8 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                         children: [
                           ...requestedBase64Images.asMap().entries.map((entry) {
                             int idx = entry.key;
-                            return Stack(children: [Container(margin: const EdgeInsets.only(right: 10), width: 70, height: 70, decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), image: DecorationImage(image: MemoryImage(base64Decode(entry.value)), fit: BoxFit.cover))), Positioned(top: 0, right: 10, child: GestureDetector(onTap: () => setStateDialog(() => requestedBase64Images.removeAt(idx)), child: Container(decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle), child: const Icon(Icons.close, color: Colors.white, size: 16))))]);
+                            String img = entry.value;
+                            return Stack(children: [Container(margin: const EdgeInsets.only(right: 10), width: 70, height: 70, decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), image: DecorationImage(image: img.startsWith('http') ? NetworkImage(ImageHelper.getCorsUrl(img)) as ImageProvider : MemoryImage(base64Decode(img)), fit: BoxFit.cover))), Positioned(top: 0, right: 10, child: GestureDetector(onTap: () => setStateDialog(() => requestedBase64Images.removeAt(idx)), child: Container(decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle), child: const Icon(Icons.close, color: Colors.white, size: 16))))]);
                           }),
                           if (requestedBase64Images.length < 3) GestureDetector(onTap: () => pickImage(requestedBase64Images), child: Container(width: 70, height: 70, decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(10), color: Colors.grey.shade50), child: const Icon(Icons.add_a_photo_outlined, color: Color(0xFF427AB5)))),
                         ],
@@ -712,6 +796,19 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                           child: OutlinedButton(
                             style: OutlinedButton.styleFrom(foregroundColor: Colors.red, side: const BorderSide(color: Colors.red), padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
                             onPressed: () async {
+                              bool? confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text("Konfirmasi Hapus"),
+                                  content: const Text("Apakah Anda yakin mau menghapus paket ini?"),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Batal", style: TextStyle(color: Colors.grey))),
+                                    ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.pop(ctx, true), child: const Text("Hapus", style: TextStyle(color: Colors.white))),
+                                  ]
+                                )
+                              );
+                              if (confirm != true) return;
+                              
                               try {
                                 await _packageService.deletePackageByAdmin(item["id"] ?? "", item["resi"] ?? "", item["userId"]);
                                 if (mounted) {
@@ -731,7 +828,23 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF427AB5), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
                             onPressed: isSaving ? null : () async {
+                              bool? confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text("Konfirmasi Simpan"),
+                                  content: const Text("Apakah Anda yakin mau menyimpan dan mengirim data ini ke user?"),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Batal", style: TextStyle(color: Colors.grey))),
+                                    ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF427AB5)), onPressed: () => Navigator.pop(ctx, true), child: const Text("Simpan", style: TextStyle(color: Colors.white))),
+                                  ]
+                                )
+                              );
+                              if (confirm != true) return;
+
                               setStateDialog(() => isSaving = true);
+                              if (selectedVideo != null) {
+                                CustomNotification.showWarning(context, "Sedang mengupload video, harap tunggu (bisa memakan waktu untuk file besar)...");
+                              }
                               try {
                                 String? finalVideoUrl = existingVideoUrl;
                                 if (selectedVideo != null) {
@@ -748,7 +861,7 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                                 );
                                 
                                 if (mounted) {
-                                  CustomNotification.showSuccess(context, "Berhasil update data!");
+                                  CustomNotification.showSuccess(context, "Berhasil menyimpan dan mengirim data!");
                                   Navigator.pop(context);
                                 }
                               } catch(e) { 
@@ -760,7 +873,7 @@ class _BarangMasukPageState extends State<BarangMasukPage> {
                             },
                             child: isSaving 
                               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                              : const Text("Update Foto"),
+                              : const Text("Update"),
                           ),
                         ),
                       ],
@@ -1230,11 +1343,11 @@ class ScannerScreen extends StatefulWidget {
 
 class _ScannerScreenState extends State<ScannerScreen> {
   final MobileScannerController controller = MobileScannerController(
-    facing: CameraFacing.front, // Agar 'pantulan' seperti cermin di laptop
-    formats: [BarcodeFormat.all], // Deteksi semua jenis barcode
+    facing: CameraFacing.back, // Default kamera belakang (lebih pas untuk scan paket di HP, bisa dibalik ke depan)
+    formats: const [BarcodeFormat.all],
     detectionSpeed: DetectionSpeed.noDuplicates,
   );
-  bool isStarted = false;
+  bool isScanning = true;
 
   @override
   void dispose() {
@@ -1265,10 +1378,12 @@ class _ScannerScreenState extends State<ScannerScreen> {
             child: MobileScanner(
               controller: controller,
               onDetect: (capture) {
+                if (!isScanning) return;
                 final List<Barcode> barcodes = capture.barcodes;
                 for (final barcode in barcodes) {
-                  if (barcode.rawValue != null) {
-                    CustomNotification.showSuccess(context, "Barcode Terdeteksi!");
+                  if (barcode.rawValue != null && barcode.rawValue!.isNotEmpty) {
+                    setState(() { isScanning = false; });
+                    CustomNotification.showSuccess(context, "Barcode Terdeteksi: ${barcode.rawValue}");
                     Navigator.pop(context, barcode.rawValue);
                     break;
                   }
@@ -1277,112 +1392,63 @@ class _ScannerScreenState extends State<ScannerScreen> {
             ),
           ),
           
-          // LAYAR AWAL SEBELUM START
-          if (!isStarted)
-            Container(
-              color: const Color(0xFF1A1A1A),
-              width: double.infinity,
-              height: double.infinity,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.camera_front_rounded, color: Colors.white54, size: 100),
-                  const SizedBox(height: 25),
-                  const Text(
-                    "Buka Pantulan Kamera",
-                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 15),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 50),
-                    child: Text(
-                      "Klik tombol di bawah untuk melihat diri Anda dan mulai scan barcode.",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white60, fontSize: 14),
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  ElevatedButton.icon(
-                    onPressed: () async {
-                      try {
-                        await controller.start();
-                        setState(() => isStarted = true);
-                      } catch (e) {
-                        CustomNotification.showError(context, "Izin kamera ditolak: $e");
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: const Color(0xFF427AB5),
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 18),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                      elevation: 10,
-                    ),
-                    icon: const Icon(Icons.play_circle_fill_rounded),
-                    label: const Text("NYALAKAN KAMERA SEKARANG", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
-                  ),
-                ],
-              ),
-            ),
-          
           // OVERLAY SCANNER PREMIUM
-          if (isStarted)
-            IgnorePointer(
-              child: Stack(
-                children: [
-                  // Dim background except the hole
-                  ColorFiltered(
-                    colorFilter: ColorFilter.mode(
-                      Colors.black.withOpacity(0.5),
-                      BlendMode.srcOut,
-                    ),
-                    child: Stack(
-                      children: [
-                        Container(color: Colors.black),
-                        Center(
-                          child: Container(
-                            width: 300,
-                            height: 200,
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+          IgnorePointer(
+            child: Stack(
+              children: [
+                // Dim background except the hole
+                ColorFiltered(
+                  colorFilter: ColorFilter.mode(
+                    Colors.black.withOpacity(0.5),
+                    BlendMode.srcOut,
                   ),
-                  // Border and Text
-                  Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
+                  child: Stack(
+                    children: [
+                      Container(color: Colors.black),
+                      Center(
+                        child: Container(
                           width: 300,
                           height: 200,
                           decoration: BoxDecoration(
-                            border: Border.all(color: const Color(0xFF427AB5), width: 4),
+                            color: Colors.red,
                             borderRadius: BorderRadius.circular(20),
                           ),
                         ),
-                        const SizedBox(height: 20),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.black87,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text(
-                            "Dekatkan Barcode ke Kotak Biru",
-                            style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                // Border and Text
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 300,
+                        height: 200,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: const Color(0xFF427AB5), width: 4),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.black87,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          "Dekatkan Barcode ke Kotak Biru",
+                          style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
+          ),
         ],
       ),
     );

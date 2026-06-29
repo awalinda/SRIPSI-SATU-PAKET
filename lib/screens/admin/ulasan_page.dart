@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'package:intl/intl.dart';
+import 'package:satupaket/utils/image_helper.dart';
 
 class UlasanPage extends StatefulWidget {
   const UlasanPage({super.key});
@@ -258,20 +259,28 @@ class _UlasanPageState extends State<UlasanPage> {
                                     backgroundColor: Colors.transparent,
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(15),
-                                      child: Image.memory(base64Decode(reviewImageBase64!), fit: BoxFit.contain),
+                                      child: reviewImageBase64!.startsWith('http') ? Image.network(ImageHelper.getCorsUrl(reviewImageBase64), fit: BoxFit.contain) : Image.memory(base64Decode(reviewImageBase64!), fit: BoxFit.contain),
                                     ),
                                   ),
                                 );
                               },
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
-                                child: Image.memory(
-                                  base64Decode(reviewImageBase64),
-                                  height: 120,
-                                  width: 120,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 50, color: Colors.grey),
-                                ),
+                                child: reviewImageBase64.startsWith('http') 
+                                  ? Image.network(
+                                      ImageHelper.getCorsUrl(reviewImageBase64),
+                                      height: 120,
+                                      width: 120,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                                    )
+                                  : Image.memory(
+                                      base64Decode(reviewImageBase64),
+                                      height: 120,
+                                      width: 120,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                                    ),
                               ),
                             )
                           ],

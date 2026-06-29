@@ -233,6 +233,31 @@ class PackageService {
       return null;
     }
   }
+
+  // 🔥 UPLOAD IMAGE
+  Future<String?> uploadImageToStorage(XFile imageFile) async {
+    try {
+      String fileName = 'packages/images/img_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      Reference ref = FirebaseStorage.instance.ref().child(fileName);
+      
+      if (kIsWeb) {
+        final bytes = await imageFile.readAsBytes();
+        SettableMetadata metadata = SettableMetadata(contentType: 'image/jpeg');
+        UploadTask uploadTask = ref.putData(bytes, metadata);
+        TaskSnapshot snapshot = await uploadTask;
+        return await snapshot.ref.getDownloadURL();
+      } else {
+        File file = File(imageFile.path);
+        UploadTask uploadTask = ref.putFile(file);
+        TaskSnapshot snapshot = await uploadTask;
+        return await snapshot.ref.getDownloadURL();
+      }
+    } catch (e) {
+      print("Error uploading image: $e");
+      return null;
+    }
+  }
+
   // 🔥 UPDATE USER APPROVAL STATUS (User)
   Future<void> updateUserApprovalStatus(String uid, String packageId, String resi, String status, {String? reason}) async {
     final batch = _firestore.batch();

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:typed_data';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -29,6 +30,7 @@ class _KonsolidasiPageState extends State<KonsolidasiPage> {
   String tipe = "antar";
   String selectedPembayaran = "Transfer";
   XFile? _proofImage;
+  Uint8List? _proofImageBytes;
   bool _isLoading = false;
   Map<String, dynamic>? _selectedAddress;
   String? _selectedAddressId;
@@ -41,8 +43,10 @@ class _KonsolidasiPageState extends State<KonsolidasiPage> {
       imageQuality: 50, // Kompres kualitas agar Base64 tidak terlalu besar
     );
     if (image != null) {
+      final bytes = await image.readAsBytes();
       setState(() {
         _proofImage = image;
+        _proofImageBytes = bytes;
       });
     }
   }
@@ -497,9 +501,9 @@ class _KonsolidasiPageState extends State<KonsolidasiPage> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: kIsWeb
-                              ? Image.network(_proofImage!.path, fit: BoxFit.cover)
-                              : Image.network(_proofImage!.path, fit: BoxFit.cover), // path works for both if handled correctly by picker
+                          child: _proofImageBytes != null
+                              ? Image.memory(_proofImageBytes!, fit: BoxFit.cover)
+                              : const SizedBox(),
                         ),
                       ),
                     
@@ -542,7 +546,10 @@ class _KonsolidasiPageState extends State<KonsolidasiPage> {
                           ),
                           const SizedBox(width: 10),
                           IconButton(
-                            onPressed: () => setState(() => _proofImage = null),
+                            onPressed: () => setState(() {
+                              _proofImage = null;
+                              _proofImageBytes = null;
+                            }),
                             icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
                             style: IconButton.styleFrom(
                               backgroundColor: Colors.red.withOpacity(0.05),
@@ -871,10 +878,9 @@ class _KonsolidasiPageState extends State<KonsolidasiPage> {
     try {
       String resi = "SP${Random().nextInt(999999).toString().padLeft(6, '0')}";
       
-      String? base64Image;
+      String? buktiUrl;
       if (_proofImage != null) {
-        final bytes = await _proofImage!.readAsBytes();
-        base64Image = base64Encode(bytes);
+        buktiUrl = await PackageService().uploadImageToStorage(_proofImage!);
       }
 
       Map<String, dynamic> order = {
@@ -889,10 +895,9 @@ class _KonsolidasiPageState extends State<KonsolidasiPage> {
           "pembayaran": selectedPembayaran,
           "alamatTujuan": tipe == "antar" ? _selectedAddress : "Ambil di Gudang",
         };
-        // Save payment proof as Base64 string
-        if (_proofImage != null) {
-          final bytes = await _proofImage!.readAsBytes();
-          order["buktiPembayaran"] = base64Encode(bytes);
+        // Save payment proof as URL
+        if (buktiUrl != null) {
+          order["buktiPembayaran"] = buktiUrl;
         }
 
       await OrderService.tambahOrder(order);

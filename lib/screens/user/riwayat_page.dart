@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/order_service.dart';
 import '../../services/auth_service.dart';
+import '../../utils/image_helper.dart';
 import 'invoice_page.dart';
 
 class RiwayatPage extends StatelessWidget {
@@ -82,16 +84,34 @@ class RiwayatPage extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 📦 ICON
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEAF4FF),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: const Icon(Icons.inventory, size: 35),
-                    ),
+                    // 📦 ICON atau GAMBAR PAKET
+                    Builder(builder: (context) {
+                      String? imageUrl;
+                      if (o["paket"] is List && (o["paket"] as List).isNotEmpty) {
+                        var firstPaket = (o["paket"] as List).first;
+                        if (firstPaket is Map && firstPaket["images"] is List && (firstPaket["images"] as List).isNotEmpty) {
+                          imageUrl = (firstPaket["images"] as List).first.toString();
+                        }
+                      }
+                      
+                      return Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEAF4FF),
+                          borderRadius: BorderRadius.circular(15),
+                          image: imageUrl != null 
+                            ? DecorationImage(
+                                image: imageUrl.startsWith('http')
+                                  ? NetworkImage(ImageHelper.getCorsUrl(imageUrl)) as ImageProvider
+                                  : MemoryImage(base64Decode(imageUrl)),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                        ),
+                        child: imageUrl == null ? const Icon(Icons.inventory, size: 35, color: Colors.blue) : null,
+                      );
+                    }),
                     const SizedBox(width: 20),
                     // 📄 INFO
                     Expanded(

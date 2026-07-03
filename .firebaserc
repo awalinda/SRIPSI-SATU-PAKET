@@ -1,6 +1,7 @@
 {
   "projects": {
-    "default": "satupaket-a7b4c"
+    "default": "satupaket-a7b4c",
+    "y": "project-kompre-d7ab5"
   },
   "targets": {
     "satupaket-a7b4c": {
